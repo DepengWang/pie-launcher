@@ -13,6 +13,7 @@ import androidx.appcompat.widget.Toolbar
 import androidx.core.content.ContextCompat
 import com.kj2431.pielauncher.ui.EdgeToEdge
 import com.kj2431.pielauncher.prefs.Prefs
+import com.kj2431.pielauncher.service.PieAccessibilityService
 import com.kj2431.pielauncher.service.PieLauncherService
 
 /**
@@ -44,7 +45,7 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() { super.onResume(); render() }
 
     private fun onToggle() {
-        if (!canDrawOverlays()) { requestOverlayPermission(); return }
+        if (!accessibilityMode() && !canDrawOverlays()) { requestOverlayPermission(); return }
         val newState = !Prefs.serviceEnabled(this)
         androidx.preference.PreferenceManager.getDefaultSharedPreferences(this)
             .edit().putBoolean(Prefs.KEY_ENABLED, newState).apply()
@@ -55,15 +56,22 @@ class MainActivity : AppCompatActivity() {
 
     private fun render() {
         val overlay = canDrawOverlays()
-        val on = Prefs.serviceEnabled(this) && overlay
+        val a11yMode = accessibilityMode()
+        val on = Prefs.serviceEnabled(this) && (a11yMode || overlay)
         status.text = buildString {
             appendLine("Overlay permission: ${if (overlay) "granted" else "NOT granted"}")
             appendLine("Service: ${if (on) "running" else "stopped"}")
+            appendLine("Window mode: ${if (a11yMode) "accessibility overlay" else "normal overlay"}")
+            if (a11yMode) appendLine("Accessibility service: " +
+                if (PieAccessibilityService.isAvailable) "connected" else "NOT connected (edges hidden)")
             append("Edges: ${Prefs.edges(this@MainActivity).joinToString { it.key }}  ")
             append("| ${Prefs.thicknessDp(this@MainActivity)}dp | center ${Prefs.centerPercent(this@MainActivity)}%")
         }
         toggle.text = if (on) getString(R.string.stop) else getString(R.string.start)
     }
+
+    private fun accessibilityMode(): Boolean =
+        Prefs.windowMode(this) == Prefs.WINDOW_MODE_ACCESSIBILITY
 
     private fun canDrawOverlays(): Boolean =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this)

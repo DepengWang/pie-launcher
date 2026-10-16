@@ -113,6 +113,95 @@
             app:defaultValue="system"
             app:useSimpleSummaryProvider="true" />
 
+        <SeekBarPreference
+            app:key="pref_pie_border_dp"
+            app:iconSpaceReserved="false"
+            app:title="@string/pref_border_width_title"
+            app:summary="@string/pref_border_width_summary"
+            android:max="8"
+            app:min="0"
+            app:seekBarIncrement="1"
+            app:showSeekBarValue="true"
+            app:defaultValue="1" />
+
+        <ListPreference
+            app:key="pref_pie_border_color"
+            app:iconSpaceReserved="false"
+            app:title="@string/pref_border_color_title"
+            app:entries="@array/color_entries"
+            app:entryValues="@array/color_values"
+            app:defaultValue="#FFFFFFFF"
+            app:useSimpleSummaryProvider="true" />
+
+        <MultiSelectListPreference
+            app:key="pref_ring_info"
+            app:iconSpaceReserved="false"
+            app:title="@string/pref_center_info_title"
+            app:summary="@string/pref_ring_info_summary"
+            app:entries="@array/ring_info_entries"
+            app:entryValues="@array/ring_info_values" />
+
+        <Preference
+            app:key="pref_notification_access"
+            app:iconSpaceReserved="false"
+            app:title="@string/pref_notif_access_title"
+            app:summary="@string/pref_notif_access_summary">
+            <intent android:action="android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS" />
+        </Preference>
+
+        <SeekBarPreference
+            app:key="pref_info_interval_s"
+            app:iconSpaceReserved="false"
+            app:title="@string/pref_info_interval_title"
+            android:max="10"
+            app:min="1"
+            app:seekBarIncrement="1"
+            app:showSeekBarValue="true"
+            app:defaultValue="3" />
+
+        <SeekBarPreference
+            app:key="pref_slice_gap_deg"
+            app:iconSpaceReserved="false"
+            app:title="@string/pref_slice_gap_title"
+            app:summary="@string/pref_slice_gap_summary"
+            android:max="8"
+            app:min="0"
+            app:seekBarIncrement="1"
+            app:showSeekBarValue="true"
+            app:defaultValue="3" />
+
+        <SeekBarPreference
+            app:key="pref_dim_pct"
+            app:iconSpaceReserved="false"
+            app:title="@string/pref_dim_title"
+            app:summary="@string/pref_dim_summary"
+            android:max="90"
+            app:min="0"
+            app:seekBarIncrement="5"
+            app:showSeekBarValue="true"
+            app:defaultValue="0" />
+
+        <SeekBarPreference
+            app:key="pref_inner_radius_dp"
+            app:iconSpaceReserved="false"
+            app:title="@string/pref_inner_radius_title"
+            android:max="160"
+            app:min="16"
+            app:seekBarIncrement="1"
+            app:showSeekBarValue="true"
+            app:defaultValue="48" />
+
+        <SeekBarPreference
+            app:key="pref_outer_radius_dp"
+            app:iconSpaceReserved="false"
+            app:title="@string/pref_outer_radius_title"
+            app:summary="@string/pref_outer_radius_summary"
+            android:max="320"
+            app:min="80"
+            app:seekBarIncrement="1"
+            app:showSeekBarValue="true"
+            app:defaultValue="140" />
+
         <SwitchPreferenceCompat
             app:key="pref_below_keyboard"
             app:iconSpaceReserved="false"
@@ -135,6 +224,7 @@
             app:key="pref_anim_ms"
             app:iconSpaceReserved="false"
             app:title="@string/pref_anim_title"
+            app:summary="@string/pref_anim_summary"
             android:max="600"
             app:min="0"
             app:seekBarIncrement="10"
@@ -161,6 +251,15 @@
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/cat_behavior" app:iconSpaceReserved="false">
+        <ListPreference
+            app:key="pref_window_mode"
+            app:iconSpaceReserved="false"
+            app:title="@string/pref_window_mode_title"
+            app:entries="@array/window_mode_entries"
+            app:entryValues="@array/window_mode_values"
+            app:defaultValue="overlay"
+            app:useSimpleSummaryProvider="true" />
+
         <SwitchPreferenceCompat
             app:key="pref_root_actions"
             app:iconSpaceReserved="false"

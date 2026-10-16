@@ -30,6 +30,16 @@ object Prefs {
     const val KEY_PIE_LONG   = "pref_pie_long_color" // long-press
     const val KEY_THEME      = "pref_theme"        // system | light | dark | amoled
     const val KEY_BELOW_KB   = "pref_below_keyboard"
+    const val KEY_WINDOW_MODE = "pref_window_mode" // overlay | accessibility
+    const val KEY_INNER_RADIUS = "pref_inner_radius_dp"
+    const val KEY_PIE_BORDER = "pref_pie_border_color"
+    const val KEY_BORDER_DP  = "pref_pie_border_dp"
+    const val KEY_CENTER_INFO = "pref_center_info"  // legacy single choice: none | time | battery | both
+    const val KEY_RING_INFO  = "pref_ring_info"    // set of RingInfo.* ids
+    const val KEY_DIM_PCT    = "pref_dim_pct"
+    const val KEY_SLICE_GAP  = "pref_slice_gap_deg"
+    const val KEY_INFO_INTERVAL = "pref_info_interval_s"
+    const val KEY_OUTER_RADIUS = "pref_outer_radius_dp"
     const val KEY_APPS       = "pref_pie_apps"   // legacy, kept for migration
     const val KEY_SLICES     = "pref_pie_slices" // ordered tokens: "app:<pkg>", "act:<ID>", "act:<ID>|<arg>"
 
@@ -38,6 +48,12 @@ object Prefs {
     const val DEFAULT_THICKNESS_DP = 30
     const val DEFAULT_CENTER_PCT = 50   // strip centred at 50% of the edge
     const val DEFAULT_LENGTH_PCT = 60   // strip covers 60% of the edge
+    const val DEFAULT_INNER_RADIUS_DP = 48
+    const val DEFAULT_OUTER_RADIUS_DP = 140
+    /** Thinnest ring we allow, so slices always stay hittable. */
+    const val MIN_RING_DP = 32
+    const val WINDOW_MODE_OVERLAY = "overlay"             // TYPE_APPLICATION_OVERLAY (legacy default)
+    const val WINDOW_MODE_ACCESSIBILITY = "accessibility" // TYPE_ACCESSIBILITY_OVERLAY
 
     enum class Edge(val key: String) {
         LEFT("left"), RIGHT("right"), TOP("top"), BOTTOM("bottom");
@@ -81,6 +97,33 @@ object Prefs {
     fun pieLongColor(ctx: Context): String = sp(ctx).getString(KEY_PIE_LONG, "system") ?: "system"
     fun themeMode(ctx: Context): String = sp(ctx).getString(KEY_THEME, "system") ?: "system"
     fun belowKeyboard(ctx: Context): Boolean = sp(ctx).getBoolean(KEY_BELOW_KB, false)
+    fun pieBorderColor(ctx: Context): String = sp(ctx).getString(KEY_PIE_BORDER, "#FFFFFFFF") ?: "#FFFFFFFF"
+    fun borderWidthDp(ctx: Context): Int = sp(ctx).getInt(KEY_BORDER_DP, 1)
+    fun dimPercent(ctx: Context): Int = sp(ctx).getInt(KEY_DIM_PCT, 0)
+    fun sliceGapDeg(ctx: Context): Int = sp(ctx).getInt(KEY_SLICE_GAP, 3)
+    fun infoIntervalSec(ctx: Context): Int = sp(ctx).getInt(KEY_INFO_INTERVAL, 3).coerceAtLeast(1)
+    /**
+     * Ring info parts to show: "time", "overview", "system", "notifications".
+     * Older per-line values (memory / cpu) map to "system"; falls back to the
+     * legacy single-choice setting.
+     */
+    fun ringInfo(ctx: Context): Set<String> {
+        sp(ctx).getStringSet(KEY_RING_INFO, null)?.let { set ->
+            return set.map { if (it == "memory" || it == "cpu") "system" else it }.toSet()
+        }
+        return when (sp(ctx).getString(KEY_CENTER_INFO, "none")) {
+            "time", "both" -> setOf("time")
+            else -> emptySet()
+        }
+    }
+    fun innerRadiusDp(ctx: Context): Int = sp(ctx).getInt(KEY_INNER_RADIUS, DEFAULT_INNER_RADIUS_DP)
+    /** Outer radius, pushed out if needed so the ring is at least [MIN_RING_DP] wide. */
+    fun outerRadiusDp(ctx: Context): Int =
+        sp(ctx).getInt(KEY_OUTER_RADIUS, DEFAULT_OUTER_RADIUS_DP)
+            .coerceAtLeast(innerRadiusDp(ctx) + MIN_RING_DP)
+    fun windowMode(ctx: Context): String =
+        if (sp(ctx).getString(KEY_WINDOW_MODE, WINDOW_MODE_OVERLAY) == WINDOW_MODE_ACCESSIBILITY)
+            WINDOW_MODE_ACCESSIBILITY else WINDOW_MODE_OVERLAY
 
     // ---- Unified slice list -------------------------------------------------
     /** Ordered slice tokens. Migrates from the legacy app list on first read. */
