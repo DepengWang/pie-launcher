@@ -1,25 +1,113 @@
 package com.kj2431.pielauncher.info
 
 import android.app.ActivityManager
+import android.app.KeyguardManager
 import android.content.Context
+import android.media.AudioManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.os.BatteryManager
+import android.text.format.DateFormat
 import com.kj2431.pielauncher.service.PieNotificationListener
 import java.io.File
+import java.util.Calendar
 import java.util.Locale
 
 /**
- * Small status lines shown around the outside of the pie (LMT style). Each
- * call is a cheap snapshot taken when the pie opens; nothing here reads the
- * content of other apps.
+ * Status text shown around the outside of the pie, modelled on LMT's
+ * PieStatusInfo: a big clock plus pages of three small lines that rotate
+ * while the pie is open. Each call is a cheap snapshot; nothing here reads
+ * the content of other apps (notifications are only counted).
  */
 object RingInfo {
 
+    /** Pref values for [com.kj2431.pielauncher.prefs.Prefs.ringInfo]. */
     const val TIME = "time"
-    const val NOTIFICATIONS = "notifications"
-    const val CPU = "cpu"
-    const val MEMORY = "memory"
+    const val OVERVIEW = "overview"   // date, battery + ringer, network
+    const val SYSTEM = "system"       // notification count, CPU, memory
+    const val NOTIFICATIONS = "notifications"  // one page per recent notification
+
+    /** Big clock text and its small suffix ("24h", "AM" or "PM"), as in LMT. */
+    fun clock(ctx: Context): Pair<String, String> {
+        val c = Calendar.getInstance()
+        return if (DateFormat.is24HourFormat(ctx)) {
+            String.format(Locale.US, "%02d:%02d", c.get(Calendar.HOUR_OF_DAY), c.get(Calendar.MINUTE)) to "24h"
+        } else {
+            val h = c.get(Calendar.HOUR).let { if (it == 0) 12 else it }
+            String.format(Locale.US, "%02d:%02d", h, c.get(Calendar.MINUTE)) to
+                if (c.get(Calendar.AM_PM) == Calendar.AM) "AM" else "PM"
+        }
+    }
+
+    /** Lines of one page, outermost first. */
+    fun overview(ctx: Context): List<String> = listOf(date(ctx), battery(ctx) + " | " + ringer(ctx), network(ctx))
+
+    fun system(ctx: Context): List<String> = listOfNotNull(notifications(), cpu(), memory(ctx))
+
+    /**
+     * One page per recent notification: time, app, title + text (LMT style,
+     * cut at 25 characters). Empty while the device is locked, so the pie
+     * never shows notification content on the lock screen.
+     */
+    fun notificationPages(ctx: Context): List<List<String>> {
+        val km = ctx.getSystemService(KeyguardManager::class.java)
+        if (km == null || km.isKeyguardLocked) return emptyList()
+        return PieNotificationListener.recent.map { n ->
+            listOf(clockOf(ctx, n.postTime), cut(n.app), cut(n.text))
+        }
+    }
+
+    private fun clockOf(ctx: Context, millis: Long): String =
+        DateFormat.getTimeFormat(ctx).format(java.util.Date(millis))
+
+    private fun cut(s: String) = if (s.length > 25) s.substring(0, 24) + "..." else s
+
+    private fun date(ctx: Context): String {
+        val c = Calendar.getInstance()
+        val y = String.format(Locale.US, "%04d", c.get(Calendar.YEAR))
+        val m = String.format(Locale.US, "%02d", c.get(Calendar.MONTH) + 1)
+        val d = String.format(Locale.US, "%02d", c.get(Calendar.DAY_OF_MONTH))
+        val order = runCatching { DateFormat.getDateFormatOrder(ctx) }.getOrNull() ?: charArrayOf('y', 'M', 'd')
+        return order.map { when (it) { 'y' -> y; 'M' -> m; else -> d } }.joinToString(" | ")
+    }
+
+    private fun battery(ctx: Context): String {
+        val bm = ctx.getSystemService(Context.BATTERY_SERVICE) as BatteryManager
+        val pct = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+        return "Battery " + (if (pct < 0) "?" else "$pct%") + if (bm.isCharging) " ⚡" else ""
+    }
+
+    private fun ringer(ctx: Context): String {
+        val am = ctx.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return "Ringer"
+        return when (am.ringerMode) {
+            AudioManager.RINGER_MODE_SILENT -> "Ringer | silent"
+            AudioManager.RINGER_MODE_VIBRATE -> "Ringer | vibrate"
+            else -> "Ringer | " + am.getStreamVolume(AudioManager.STREAM_RING)
+        }
+    }
+
+    /** "Connected | WIFI | -46 dBm". Looks through a VPN to the network it rides on. */
+    private fun network(ctx: Context): String {
+        val cm = ctx.getSystemService(ConnectivityManager::class.java) ?: return "Not connected"
+        val active = cm.activeNetwork?.let { cm.getNetworkCapabilities(it) } ?: return "Not connected"
+        @Suppress("DEPRECATION")
+        val caps = if (!active.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) active
+            else cm.allNetworks.mapNotNull { cm.getNetworkCapabilities(it) }.firstOrNull {
+                !it.hasTransport(NetworkCapabilities.TRANSPORT_VPN) &&
+                    it.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            } ?: active
+        return when {
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "Connected | WIFI" +
+                caps.signalStrength.takeIf { it != NetworkCapabilities.SIGNAL_STRENGTH_UNSPECIFIED }
+                    ?.let { " | $it dBm" }.orEmpty()
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "Connected | MOBILE"
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "Connected | ETHERNET"
+            else -> "Connected"
+        }
+    }
 
     /** Count from [PieNotificationListener]; it only ever stores a number. */
-    fun notifications(): String {
+    private fun notifications(): String {
         val n = PieNotificationListener.count ?: return "Notifications: grant access"
         return when (n) {
             0 -> "No notifications"
@@ -28,20 +116,19 @@ object RingInfo {
         }
     }
 
-    /** Highest current core frequency plus the online core range, e.g. "CPU 1958 MHz | Core 0-7 online". */
-    fun cpu(): String? {
+    /** Highest current core frequency plus the online core range, e.g. "1958MHz | Core 0-7 active". */
+    private fun cpu(): String? {
         val online = readFile("/sys/devices/system/cpu/online") ?: return null
         val maxKHz = onlineCores(online).mapNotNull { core ->
             readFile("/sys/devices/system/cpu/cpu$core/cpufreq/scaling_cur_freq")?.toLongOrNull()
         }.maxOrNull()
-        val freq = maxKHz?.let { "CPU ${it / 1000} MHz | " } ?: "CPU | "
-        return freq + "Core $online online"
+        return (maxKHz?.let { "${it / 1000}MHz | " } ?: "") + "Core $online active"
     }
 
-    fun memory(ctx: Context): String {
+    private fun memory(ctx: Context): String {
         val am = ctx.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         val mi = ActivityManager.MemoryInfo().also { am.getMemoryInfo(it) }
-        return "RAM used ${gb(mi.totalMem - mi.availMem)} | free ${gb(mi.availMem)}"
+        return "Used ${gb(mi.totalMem - mi.availMem)} | Free ${gb(mi.availMem)}"
     }
 
     private fun gb(bytes: Long) = String.format(Locale.US, "%.1f GB", bytes / 1_073_741_824.0)

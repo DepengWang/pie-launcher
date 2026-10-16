@@ -37,6 +37,8 @@ object Prefs {
     const val KEY_CENTER_INFO = "pref_center_info"  // legacy single choice: none | time | battery | both
     const val KEY_RING_INFO  = "pref_ring_info"    // set of RingInfo.* ids
     const val KEY_DIM_PCT    = "pref_dim_pct"
+    const val KEY_SLICE_GAP  = "pref_slice_gap_deg"
+    const val KEY_INFO_INTERVAL = "pref_info_interval_s"
     const val KEY_OUTER_RADIUS = "pref_outer_radius_dp"
     const val KEY_APPS       = "pref_pie_apps"   // legacy, kept for migration
     const val KEY_SLICES     = "pref_pie_slices" // ordered tokens: "app:<pkg>", "act:<ID>", "act:<ID>|<arg>"
@@ -98,9 +100,17 @@ object Prefs {
     fun pieBorderColor(ctx: Context): String = sp(ctx).getString(KEY_PIE_BORDER, "#FFFFFFFF") ?: "#FFFFFFFF"
     fun borderWidthDp(ctx: Context): Int = sp(ctx).getInt(KEY_BORDER_DP, 1)
     fun dimPercent(ctx: Context): Int = sp(ctx).getInt(KEY_DIM_PCT, 0)
-    /** Ring info items to show. Falls back to the legacy single-choice setting. */
+    fun sliceGapDeg(ctx: Context): Int = sp(ctx).getInt(KEY_SLICE_GAP, 3)
+    fun infoIntervalSec(ctx: Context): Int = sp(ctx).getInt(KEY_INFO_INTERVAL, 3).coerceAtLeast(1)
+    /**
+     * Ring info parts to show: "time", "overview", "system", "notifications".
+     * Older per-line values (memory / cpu) map to "system"; falls back to the
+     * legacy single-choice setting.
+     */
     fun ringInfo(ctx: Context): Set<String> {
-        sp(ctx).getStringSet(KEY_RING_INFO, null)?.let { return it }
+        sp(ctx).getStringSet(KEY_RING_INFO, null)?.let { set ->
+            return set.map { if (it == "memory" || it == "cpu") "system" else it }.toSet()
+        }
         return when (sp(ctx).getString(KEY_CENTER_INFO, "none")) {
             "time", "both" -> setOf("time")
             else -> emptySet()

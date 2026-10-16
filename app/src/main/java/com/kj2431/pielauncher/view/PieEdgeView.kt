@@ -39,7 +39,9 @@ data class PieConfig(
     val borderColor: Int,
     val borderWidthDp: Float,      // 0 = no border
     val ringInfo: Set<String>,     // RingInfo.* ids shown around the ring
-    val dimPercent: Int            // background dim while the pie is open, 0 = off
+    val dimPercent: Int,           // background dim while the pie is open, 0 = off
+    val sliceGapDeg: Float,        // gap between slices; 0 = touching, split by the border
+    val infoIntervalMs: Long       // how often the ring info page rotates
 )
 
 /**
@@ -67,7 +69,7 @@ class PieEdgeView(
     private val innerRadius = dp(config.innerRadiusDp)
     private val outerRadius = dp(config.outerRadiusDp)
     private val iconSize = dp(26f)
-    private val gapDeg = 3f
+    private val gapDeg = config.sliceGapDeg
     private val arcTotal = 180f
 
     private val arcStart: Float
@@ -96,19 +98,40 @@ class PieEdgeView(
         strokeWidth = dp(config.borderWidthDp)
         color = config.borderColor
     }
+    // Ring info (LMT PieStatusInfo): 65 dp clock, 13 dp small text, thin faces.
     private val timePaint   = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
+        color = Color.WHITE; textSize = dp(65f)
         typeface = android.graphics.Typeface.create("sans-serif-thin", android.graphics.Typeface.NORMAL)
         setShadowLayer(dp(2f), 0f, 0f, Color.BLACK)   // readable over any app
     }
-    private val infoPaint   = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val labelPaint  = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE; textSize = dp(13f)
+        typeface = android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL)
         setShadowLayer(dp(2f), 0f, 0f, Color.BLACK)
     }
-    /** Ring info captured when the pie opens: big clock + small lines after it. */
-    private var timeText: String = ""
-    private var infoLines: List<String> = emptyList()
+    private val infoPaint   = Paint(labelPaint)
+    private var timeText = ""
+    private var timeLabel = ""                         // "24h" / "AM" / "PM"
+    private var infoPages: List<List<String>> = emptyList()
+    private var pageIndex = 0
+    private var switchAt = 0L                          // when the current page switch began, 0 = none
+    private var prevLines: List<String> = emptyList()  // page being switched away from
     private val infoPath = Path()
+    /** Rotates the small-text page (and refreshes the data) while the pie is open. */
+    private val rotateInfo = object : Runnable {
+        override fun run() {
+            if (mode != Mode.PIE) return
+            val old = infoPages.getOrNull(pageIndex).orEmpty()
+            buildInfo()
+            if (infoPages.size > 1) {
+                prevLines = old
+                pageIndex = (pageIndex + 1) % infoPages.size
+                switchAt = System.currentTimeMillis()
+            }
+            invalidate()
+            handler.postDelayed(this, config.infoIntervalMs)
+        }
+    }
 
     private var items: List<PieItem> = emptyList()
     private var centerRawX = 0f
@@ -188,7 +211,10 @@ class PieEdgeView(
     private fun openPie() {
         items = itemsProvider()
         if (items.isEmpty()) return
+        pageIndex = 0; switchAt = 0L; prevLines = emptyList()
         buildInfo()
+        handler.removeCallbacks(rotateInfo)
+        handler.postDelayed(rotateInfo, config.infoIntervalMs)
         activeIndex = -1; longArmed = false
         expandedReady = false
         mode = Mode.PIE
@@ -199,6 +225,7 @@ class PieEdgeView(
 
     private fun reset() {
         handler.removeCallbacks(armLong)
+        handler.removeCallbacks(rotateInfo)
         mode = Mode.IDLE
         activeIndex = -1; longArmed = false; expandedReady = false
         lastOriginX = Int.MIN_VALUE; lastOriginY = Int.MIN_VALUE
@@ -237,14 +264,18 @@ class PieEdgeView(
         val cx = centerRawX - origin[0]
         val cy = centerRawY - origin[1]
 
-        // Previous-style open animation: grow + fade in place (ease-out).
-        val t = if (config.animMs <= 0) 1f
-                else ((System.currentTimeMillis() - openAt).toFloat() / config.animMs).coerceIn(0f, 1f)
-        val ease = 1f - (1f - t) * (1f - t)
-        val oR = outerRadius * (0.6f + 0.4f * ease)
-        val iR = innerRadius * (0.6f + 0.4f * ease)
-        val layer = canvas.saveLayerAlpha(null, (255 * ease).toInt())
-        if (config.dimPercent > 0) canvas.drawColor(Color.argb(config.dimPercent * 255 / 100, 0, 0, 0))
+        // LMT open animation (PieMenu.animateOpen / PieStatusInfo.layout), with
+        // D = the animation time setting (LMT: 2 x 80 ms):
+        //   slices fan out from the first edge over D, icons fading in;
+        //   clock (and background dim) fade + slide in after 4D over 3D, decelerating;
+        //   small info lines fade in after 5D over 7D.
+        val elapsed = System.currentTimeMillis() - openAt
+        val fan = accelDecel(phase(elapsed, 0f, 1f))
+        val clockIn = decel(phase(elapsed, 4f, 3f))
+        val infoIn = phase(elapsed, 5f, 7f)
+        val oR = outerRadius
+        val iR = innerRadius
+        if (config.dimPercent > 0) canvas.drawColor(Color.argb((config.dimPercent * 255 / 100 * clockIn).toInt(), 0, 0, 0))
 
         val per = arcTotal / items.size
         val outer = RectF(cx - oR, cy - oR, cx + oR, cy + oR)
@@ -252,7 +283,7 @@ class PieEdgeView(
 
         items.forEachIndexed { i, item ->
             val showLong = i == activeIndex && longArmed
-            val a0 = arcStart + dir * (i * per) + dir * (gapDeg / 2f)
+            val a0 = arcStart + dir * (i * per * fan) + dir * (gapDeg / 2f)
             val seg = dir * (per - gapDeg)
             val path = Path().apply {
                 arcTo(outer, a0, seg)
@@ -267,7 +298,7 @@ class PieEdgeView(
             canvas.drawPath(path, paint)
             if (config.borderWidthDp > 0f) canvas.drawPath(path, borderPaint)
 
-            val mid = Math.toRadians((arcStart + dir * ((i + 0.5f) * per)).toDouble())
+            val mid = Math.toRadians((arcStart + dir * ((i * fan + 0.5f) * per)).toDouble())
             val r = (iR + oR) / 2f
             val lx = cx + (r * cos(mid)).toFloat()
             val ly = cy + (r * sin(mid)).toFloat()
@@ -276,6 +307,8 @@ class PieEdgeView(
             val faceLabel = if (showLong) (item.longLabel ?: item.label) else item.label
 
             val drawIcon = config.showIcon && faceIcon != null
+            faceIcon?.alpha = (255 * fan).toInt()
+            textPaint.alpha = (255 * fan).toInt()
             if (drawIcon) {
                 val h = iconSize / 2f
                 val yOff = if (config.showText) dp(6f) else 0f
@@ -287,75 +320,92 @@ class PieEdgeView(
                 canvas.drawText(trim(faceLabel), lx, ly + textPaint.textSize / 3f, textPaint)
             }
         }
-        drawRingInfo(canvas, cx, cy, oR)
-        canvas.restoreToCount(layer)
-        if (t < 1f) postInvalidateOnAnimation()
+        val switching = drawRingInfo(canvas, cx, cy, oR, clockIn, infoIn)
+        if (infoIn < 1f || switching) postInvalidateOnAnimation()
     }
+
+    /** Progress 0..1 of a phase that starts after [delay] x D and lasts [length] x D. */
+    private fun phase(elapsed: Long, delay: Float, length: Float): Float {
+        val d = config.animMs.toFloat()
+        if (d <= 0f) return 1f
+        return ((elapsed - delay * d) / (length * d)).coerceIn(0f, 1f)
+    }
+    private fun accelDecel(t: Float) = (cos((t + 1) * Math.PI) / 2.0 + 0.5).toFloat()
+    private fun decel(t: Float) = 1f - (1f - t) * (1f - t)
 
     private fun buildInfo() {
         val want = config.ringInfo
-        timeText = if (RingInfo.TIME in want)
-            android.text.format.DateFormat.getTimeFormat(context).format(java.util.Date()) else ""
-        // Index 0 sits closest to the ring; later lines stack outward (as in LMT).
-        infoLines = listOfNotNull(
-            if (RingInfo.MEMORY in want) RingInfo.memory(context) else null,
-            if (RingInfo.CPU in want) RingInfo.cpu() else null,
-            if (RingInfo.NOTIFICATIONS in want) RingInfo.notifications() else null
-        )
+        if (RingInfo.TIME in want) RingInfo.clock(context).let { timeText = it.first; timeLabel = it.second }
+        else { timeText = ""; timeLabel = "" }
+        infoPages = listOfNotNull(
+            if (RingInfo.OVERVIEW in want) RingInfo.overview(context) else null,
+            if (RingInfo.SYSTEM in want) RingInfo.system(context) else null
+        ) + if (RingInfo.NOTIFICATIONS in want) RingInfo.notificationPages(context) else emptyList()
+        if (pageIndex >= infoPages.size) pageIndex = 0
     }
 
     /**
-     * LMT-style ring info, curved along the outside of the ring: a large thin
-     * clock from the start of the fan, then a block of small lines with a
-     * shared start angle whose total height matches the clock's digit height.
-     * The arc runs clockwise (glyph tops pointing away from the pie) unless its
-     * middle lies below the center, in which case it runs counter-clockwise so
-     * the text isn't upside down.
+     * LMT-style ring info, curved along the outside of the ring and meeting at
+     * the middle of the fan: the clock (with its small 24h/AM/PM suffix) on the
+     * lower half, the current page of small lines on the other half, outermost
+     * line first. The arc runs clockwise (glyph tops pointing away from the
+     * pie) unless its middle lies below the center, in which case it runs
+     * counter-clockwise so the text is not upside down.
      */
-    private fun drawRingInfo(canvas: Canvas, cx: Float, cy: Float, oR: Float) {
-        if (timeText.isEmpty() && infoLines.isEmpty()) return
+    /** Draws the ring info; returns true while a page switch is still animating. */
+    private fun drawRingInfo(canvas: Canvas, cx: Float, cy: Float, oR: Float, clockIn: Float, infoIn: Float): Boolean {
+        // Page switch (LMT AIAnimatorOutIn): the old page fades out sliding away
+        // from the clock, then the new one slides back in and fades in. Same
+        // proportions as LMT: out over the first 10% of the interval, back in
+        // by 18% (300 ms + 240 ms at its 3 s period).
+        val outMs = config.infoIntervalMs * 0.10f
+        val endMs = config.infoIntervalMs * 0.18f
+        val t = if (switchAt == 0L) Float.MAX_VALUE else (System.currentTimeMillis() - switchAt).toFloat()
+        val out = when {
+            t < outMs -> t / outMs
+            t < endMs -> 1f - (t - outMs) / (endMs - outMs)
+            else -> 0f
+        }
+        val lines = if (t < outMs) prevLines else infoPages.getOrNull(pageIndex).orEmpty()
+        if (timeText.isEmpty() && lines.isEmpty()) return false
         val mid = arcStart + dir * arcTotal / 2f
         val lo = minOf(arcStart, arcStart + dir * arcTotal)
         val clockwise = sin(Math.toRadians(mid.toDouble())) < 0.1
-        val base = oR + dp(8f) + borderPaint.strokeWidth / 2f
-        // Radial distance from [base] to the glyphs' foot; counter-clockwise
-        // text grows toward the pie, so its baseline sits a cap height further out.
+        val base = oR + borderPaint.strokeWidth / 2f + dp(10f)
+        // Radial position of a line's foot above [base]; counter-clockwise text
+        // grows toward the pie, so its baseline sits a cap height further out.
         fun baseline(offset: Float, cap: Float) = base + offset + if (clockwise) 0f else cap
 
-        // Height of the band the text occupies = clock digit height.
-        timePaint.textSize = oR * 0.5f
-        val band = capHeight(timePaint)
-        val timeR = baseline(0f, band)
-        val timeAng = if (timeText.isEmpty()) 0f else timePaint.measureText(timeText) / timeR
-
-        // Small lines sized so the block fills the band (~1.35 line spacing).
-        // Line 0 sits nearest the ring; later lines stack outward.
-        val n = infoLines.size
-        infoPaint.textSize = (band / (0.72f + 1.35f * (n - 1).coerceAtLeast(0))).coerceIn(dp(10f), dp(16f))
-        val cap = capHeight(infoPaint)
-        val step = if (n > 1) (band - cap) / (n - 1) else 0f
-        val first = if (n > 1) 0f else (band - cap) / 2f
-        val lineR = List(n) { baseline(first + it * step, cap) }
-        val lineAng = List(n) { infoPaint.measureText(infoLines[it]) / lineR[it] }
-        val blockAng = lineAng.maxOrNull() ?: 0f
-        val gapAng = if (timeAng > 0f && n > 0) dp(10f) / timeR else 0f
-
-        // As in LMT, the small block goes on the end of the arc that is higher
-        // on screen (where it reads best), aligned against the clock. If the
-        // path starts at the top (left edge), the block comes first.
+        // The clock takes whichever half of the arc is lower on screen (the
+        // first half when both are level, as for top/bottom edges).
         val startDeg = if (clockwise) lo else lo + arcTotal
         val endDeg = if (clockwise) lo + arcTotal else lo
-        val linesFirst = sin(Math.toRadians(startDeg.toDouble())) <
-            sin(Math.toRadians(endDeg.toDouble())) - 0.1
-        val lead = Math.toRadians(4.0).toFloat()   // positions along the arc, in radians
-
-        val timeAt = if (linesFirst) lead + blockAng + gapAng else lead
-        if (timeText.isNotEmpty()) drawOnArc(canvas, timeText, timePaint, cx, cy, timeR, lo, clockwise, timeAt)
-        infoLines.forEachIndexed { i, line ->
-            val at = if (linesFirst) lead + blockAng - lineAng[i]   // right-aligned, ending at the clock
-                     else lead + timeAng + gapAng                    // left-aligned, starting after it
-            drawOnArc(canvas, line, infoPaint, cx, cy, lineR[i], lo, clockwise, at)
+        val clockFirst = sin(Math.toRadians(endDeg.toDouble())) <= sin(Math.toRadians(startDeg.toDouble())) + 0.1
+        val midAng = Math.toRadians(arcTotal / 2.0).toFloat()
+        val pad = dp(5f)
+        // Text in the first half ends at the middle; in the second half it starts
+        // there. [away] pushes it further from the middle along the arc.
+        fun draw(text: String, paint: Paint, r: Float, firstHalf: Boolean, away: Float = 0f) {
+            val at = if (firstHalf) midAng * r - pad - away - paint.measureText(text) else midAng * r + pad + away
+            drawOnArc(canvas, text, paint, cx, cy, r, lo, clockwise, at / r)
         }
+
+        if (timeText.isNotEmpty() && clockIn > 0f) {
+            // Clock slides one text size toward the middle; its suffix drops in radially.
+            val big = timePaint.textSize
+            timePaint.alpha = (255 * clockIn).toInt()
+            labelPaint.alpha = (255 * clockIn).toInt()
+            draw(timeText, timePaint, baseline(0f, capHeight(timePaint)), clockFirst, (1f - clockIn) * big)
+            draw(timeLabel, labelPaint, baseline(big - dp(10f) + (1f - clockIn) * big, capHeight(labelPaint)), clockFirst)
+        }
+        if (lines.isEmpty() || infoIn <= 0f) return out > 0f
+        infoPaint.alpha = (255 * infoIn * (1f - out)).toInt()
+        val cap = capHeight(infoPaint)
+        val lineH = infoPaint.textSize * 1.2f
+        lines.forEachIndexed { i, line ->
+            draw(line, infoPaint, baseline((lines.size - 1 - i) * lineH, cap), !clockFirst, out * dp(120f))
+        }
+        return t < endMs
     }
 
     private val capBounds = android.graphics.Rect()

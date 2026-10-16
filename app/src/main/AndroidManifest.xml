@@ -19,6 +19,8 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- Haptic feedback when a slice is selected -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Ring info: connection type and Wi-Fi signal -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
         android:name=".PieApp"

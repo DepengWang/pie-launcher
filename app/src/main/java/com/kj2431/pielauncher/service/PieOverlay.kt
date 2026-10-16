@@ -61,7 +61,9 @@ class PieOverlay(private val ctx: Context, private val windowType: Int) {
                 borderColor = pieColors.border,
                 borderWidthDp = Prefs.borderWidthDp(ctx).toFloat(),
                 ringInfo = Prefs.ringInfo(ctx),
-                dimPercent = Prefs.dimPercent(ctx)
+                dimPercent = Prefs.dimPercent(ctx),
+                sliceGapDeg = Prefs.sliceGapDeg(ctx).toFloat(),
+                infoIntervalMs = Prefs.infoIntervalSec(ctx) * 1000L
             )
             view = PieEdgeView(
                 ctx, edge,

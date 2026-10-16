@@ -72,6 +72,7 @@
     <string name="pref_label_title">Slice label</string>
     <string name="pref_response_title">Response time (ms)</string>
     <string name="pref_anim_title">Animation time (ms)</string>
+    <string name="pref_anim_summary">Slice fan-out time; the clock and info text follow, scaled from it (as in LMT). 0 = no animation.</string>
     <string name="pref_longpress_title">Long-press time (ms)</string>
     <string name="pref_haptic_title">Vibration duration (ms)</string>
     <string-array name="label_entries">
@@ -147,19 +148,22 @@
     <string name="pref_center_info_title">Ring info (outside the pie)</string>
     <string name="pref_ring_info_summary">Clock and status lines curved around the open pie.</string>
     <string-array name="ring_info_entries">
-        <item>Time</item>
-        <item>Memory</item>
-        <item>CPU</item>
-        <item>Notification count</item>
+        <item>Clock</item>
+        <item>Overview page (date, battery, ringer, network)</item>
+        <item>System page (notification count, CPU, memory)</item>
+        <item>Notification pages (app, title and text; hidden when locked)</item>
     </string-array>
     <string-array name="ring_info_values">
         <item>time</item>
-        <item>memory</item>
-        <item>cpu</item>
+        <item>overview</item>
+        <item>system</item>
         <item>notifications</item>
     </string-array>
+    <string name="pref_info_interval_title">Ring info page interval (s)</string>
+    <string name="pref_slice_gap_title">Slice gap (degrees)</string>
+    <string name="pref_slice_gap_summary">0 = slices touch, separated only by the border.</string>
     <string name="pref_notif_access_title">Notification access</string>
-    <string name="pref_notif_access_summary">Needed only for the notification count. Pie counts notifications and never reads their content.</string>
+    <string name="pref_notif_access_summary">Needed for the notification count and notification pages. Content is kept in memory only and hidden while the device is locked.</string>
     <string name="notif_listener_label">Pie Launcher notification count</string>
     <string name="pref_dim_title">Background dim (%)</string>
     <string name="pref_dim_summary">Darken the screen behind the open pie. 0 = off.</string>

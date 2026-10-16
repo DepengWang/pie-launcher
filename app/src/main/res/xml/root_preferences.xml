@@ -150,6 +150,27 @@
         </Preference>
 
         <SeekBarPreference
+            app:key="pref_info_interval_s"
+            app:iconSpaceReserved="false"
+            app:title="@string/pref_info_interval_title"
+            android:max="10"
+            app:min="1"
+            app:seekBarIncrement="1"
+            app:showSeekBarValue="true"
+            app:defaultValue="3" />
+
+        <SeekBarPreference
+            app:key="pref_slice_gap_deg"
+            app:iconSpaceReserved="false"
+            app:title="@string/pref_slice_gap_title"
+            app:summary="@string/pref_slice_gap_summary"
+            android:max="8"
+            app:min="0"
+            app:seekBarIncrement="1"
+            app:showSeekBarValue="true"
+            app:defaultValue="3" />
+
+        <SeekBarPreference
             app:key="pref_dim_pct"
             app:iconSpaceReserved="false"
             app:title="@string/pref_dim_title"
@@ -203,6 +224,7 @@
             app:key="pref_anim_ms"
             app:iconSpaceReserved="false"
             app:title="@string/pref_anim_title"
+            app:summary="@string/pref_anim_summary"
             android:max="600"
             app:min="0"
             app:seekBarIncrement="10"
