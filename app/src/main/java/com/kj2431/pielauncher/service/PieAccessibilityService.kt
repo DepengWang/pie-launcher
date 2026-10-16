@@ -19,10 +19,12 @@ import com.kj2431.pielauncher.prefs.Prefs
 class PieAccessibilityService : AccessibilityService() {
 
     private var overlay: PieOverlay? = null
+    private val onSettingsChanged: () -> Unit = { refreshOverlay() }
 
     override fun onServiceConnected() {
         instance = this
         refreshOverlay()
+        OverlaySettings.register(this, onSettingsChanged)
     }
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
     override fun onInterrupt() {}
@@ -51,6 +53,7 @@ class PieAccessibilityService : AccessibilityService() {
     }
 
     private fun tearDown() {
+        OverlaySettings.unregister(onSettingsChanged)
         if (instance === this) instance = null
         overlay?.removeEdges(); overlay = null
     }

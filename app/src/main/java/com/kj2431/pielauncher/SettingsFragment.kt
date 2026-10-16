@@ -1,14 +1,11 @@
 package com.kj2431.pielauncher
 
-import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import androidx.appcompat.app.AppCompatDelegate
-import androidx.core.content.ContextCompat
 import androidx.preference.ListPreference
 import androidx.preference.PreferenceFragmentCompat
 import com.kj2431.pielauncher.prefs.Prefs
-import com.kj2431.pielauncher.service.PieLauncherService
 import com.kj2431.pielauncher.ui.ThemeHelper
 
 class SettingsFragment : PreferenceFragmentCompat() {
@@ -26,18 +23,6 @@ class SettingsFragment : PreferenceFragmentCompat() {
             }
             AppCompatDelegate.setDefaultNightMode(mode)
             activity?.recreate()
-            true
-        }
-
-        // Window mode change: if the launcher is running, have it rebuild its
-        // edges in the new mode. Posted so the new value is persisted first.
-        findPreference<ListPreference>(Prefs.KEY_WINDOW_MODE)?.setOnPreferenceChangeListener { _, _ ->
-            listView.post {
-                val ctx = context ?: return@post
-                if (Prefs.serviceEnabled(ctx)) {
-                    ContextCompat.startForegroundService(ctx, Intent(ctx, PieLauncherService::class.java))
-                }
-            }
             true
         }
     }

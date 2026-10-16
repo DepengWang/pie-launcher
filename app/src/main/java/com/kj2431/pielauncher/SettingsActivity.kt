@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.kj2431.pielauncher.ui.ThemeHelper
 import androidx.appcompat.widget.Toolbar
+import com.kj2431.pielauncher.service.OverlaySettings
 import com.kj2431.pielauncher.ui.EdgeToEdge
 
 class SettingsActivity : AppCompatActivity() {
@@ -22,5 +23,10 @@ class SettingsActivity : AppCompatActivity() {
                 .commit()
         }
     }
+    // Show the activation strips while Settings is visible so position/size
+    // edits can be seen live; the running service rebuilds them on change.
+    override fun onStart() { super.onStart(); OverlaySettings.preview = true }
+    override fun onStop() { OverlaySettings.preview = false; super.onStop() }
+
     override fun onSupportNavigateUp(): Boolean { finish(); return true }
 }

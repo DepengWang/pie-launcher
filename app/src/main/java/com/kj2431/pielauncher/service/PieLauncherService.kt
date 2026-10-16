@@ -23,6 +23,16 @@ class PieLauncherService : Service() {
     /** Only used in normal overlay mode; accessibility mode lives in [PieAccessibilityService]. */
     private var overlay: PieOverlay? = null
 
+    /**
+     * Rebuilds this service's own edges as soon as a setting changes, so edits
+     * show live. The accessibility service listens for itself, since it can be
+     * connected while this service isn't running (e.g. right after an update).
+     */
+    private val onSettingsChanged: () -> Unit = {
+        rebuildOwnEdges()
+        if (Prefs.rootActionsEnabled(this)) RootHelper.prewarm()
+    }
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
@@ -30,6 +40,7 @@ class PieLauncherService : Service() {
         startInForeground()
         applyWindowMode()
         if (Prefs.rootActionsEnabled(this)) RootHelper.prewarm()
+        OverlaySettings.register(this, onSettingsChanged)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -44,11 +55,15 @@ class PieLauncherService : Service() {
      * any) is asked to refresh its own TYPE_ACCESSIBILITY_OVERLAY windows.
      */
     private fun applyWindowMode() {
+        rebuildOwnEdges()
+        PieAccessibilityService.instance?.refreshOverlay()
+    }
+
+    private fun rebuildOwnEdges() {
         overlay?.removeEdges(); overlay = null
         if (Prefs.windowMode(this) == Prefs.WINDOW_MODE_OVERLAY) {
             overlay = PieOverlay(this, overlayType()).also { it.addEdges() }
         }
-        PieAccessibilityService.instance?.refreshOverlay()
     }
 
     private fun overlayType(): Int =
@@ -73,6 +88,7 @@ class PieLauncherService : Service() {
     }
 
     override fun onDestroy() {
+        OverlaySettings.unregister(onSettingsChanged)
         overlay?.removeEdges(); overlay = null
         PieAccessibilityService.instance?.refreshOverlay()
         RootHelper.shutdown()

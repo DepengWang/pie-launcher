@@ -65,7 +65,7 @@ class PieOverlay(private val ctx: Context, private val windowType: Int) {
             )
             view = PieEdgeView(
                 ctx, edge,
-                showHint = Prefs.showActivationBars(ctx),
+                showHint = Prefs.showActivationBars(ctx) || OverlaySettings.preview,
                 config = cfg,
                 itemsProvider = { buildItems() },
                 onExpand = { expand(view) },
