@@ -15,6 +15,7 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import android.view.MotionEvent
 import android.view.View
+import com.kj2431.pielauncher.info.RingInfo
 import com.kj2431.pielauncher.model.PieItem
 import com.kj2431.pielauncher.prefs.Prefs.Edge
 import kotlin.math.atan2
@@ -32,7 +33,13 @@ data class PieConfig(
     val hapticMs: Long,
     val bgColor: Int,
     val primaryColor: Int,
-    val longColor: Int
+    val longColor: Int,
+    val innerRadiusDp: Float,
+    val outerRadiusDp: Float,
+    val borderColor: Int,
+    val borderWidthDp: Float,      // 0 = no border
+    val ringInfo: Set<String>,     // RingInfo.* ids shown around the ring
+    val dimPercent: Int            // background dim while the pie is open, 0 = off
 )
 
 /**
@@ -57,8 +64,8 @@ class PieEdgeView(
     private enum class Mode { IDLE, PIE }
     private var mode = Mode.IDLE
 
-    private val innerRadius = dp(48f)
-    private val outerRadius = dp(140f)
+    private val innerRadius = dp(config.innerRadiusDp)
+    private val outerRadius = dp(config.outerRadiusDp)
     private val iconSize = dp(26f)
     private val gapDeg = 3f
     private val arcTotal = 180f
@@ -83,6 +90,25 @@ class PieEdgeView(
     private val textPaint   = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE; textSize = dp(12f); textAlign = Paint.Align.CENTER
     }
+    private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeJoin = Paint.Join.ROUND
+        strokeWidth = dp(config.borderWidthDp)
+        color = config.borderColor
+    }
+    private val timePaint   = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        typeface = android.graphics.Typeface.create("sans-serif-thin", android.graphics.Typeface.NORMAL)
+        setShadowLayer(dp(2f), 0f, 0f, Color.BLACK)   // readable over any app
+    }
+    private val infoPaint   = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE; textSize = dp(13f)
+        setShadowLayer(dp(2f), 0f, 0f, Color.BLACK)
+    }
+    /** Ring info captured when the pie opens: big clock + small lines after it. */
+    private var timeText: String = ""
+    private var infoLines: List<String> = emptyList()
+    private val infoPath = Path()
 
     private var items: List<PieItem> = emptyList()
     private var centerRawX = 0f
@@ -162,6 +188,7 @@ class PieEdgeView(
     private fun openPie() {
         items = itemsProvider()
         if (items.isEmpty()) return
+        buildInfo()
         activeIndex = -1; longArmed = false
         expandedReady = false
         mode = Mode.PIE
@@ -217,6 +244,7 @@ class PieEdgeView(
         val oR = outerRadius * (0.6f + 0.4f * ease)
         val iR = innerRadius * (0.6f + 0.4f * ease)
         val layer = canvas.saveLayerAlpha(null, (255 * ease).toInt())
+        if (config.dimPercent > 0) canvas.drawColor(Color.argb(config.dimPercent * 255 / 100, 0, 0, 0))
 
         val per = arcTotal / items.size
         val outer = RectF(cx - oR, cy - oR, cx + oR, cy + oR)
@@ -237,6 +265,7 @@ class PieEdgeView(
                 else -> slicePaint
             }
             canvas.drawPath(path, paint)
+            if (config.borderWidthDp > 0f) canvas.drawPath(path, borderPaint)
 
             val mid = Math.toRadians((arcStart + dir * ((i + 0.5f) * per)).toDouble())
             val r = (iR + oR) / 2f
@@ -258,8 +287,92 @@ class PieEdgeView(
                 canvas.drawText(trim(faceLabel), lx, ly + textPaint.textSize / 3f, textPaint)
             }
         }
+        drawRingInfo(canvas, cx, cy, oR)
         canvas.restoreToCount(layer)
         if (t < 1f) postInvalidateOnAnimation()
+    }
+
+    private fun buildInfo() {
+        val want = config.ringInfo
+        timeText = if (RingInfo.TIME in want)
+            android.text.format.DateFormat.getTimeFormat(context).format(java.util.Date()) else ""
+        // Index 0 sits closest to the ring; later lines stack outward (as in LMT).
+        infoLines = listOfNotNull(
+            if (RingInfo.MEMORY in want) RingInfo.memory(context) else null,
+            if (RingInfo.CPU in want) RingInfo.cpu() else null,
+            if (RingInfo.NOTIFICATIONS in want) RingInfo.notifications() else null
+        )
+    }
+
+    /**
+     * LMT-style ring info, curved along the outside of the ring: a large thin
+     * clock from the start of the fan, then a block of small lines with a
+     * shared start angle whose total height matches the clock's digit height.
+     * The arc runs clockwise (glyph tops pointing away from the pie) unless its
+     * middle lies below the center, in which case it runs counter-clockwise so
+     * the text isn't upside down.
+     */
+    private fun drawRingInfo(canvas: Canvas, cx: Float, cy: Float, oR: Float) {
+        if (timeText.isEmpty() && infoLines.isEmpty()) return
+        val mid = arcStart + dir * arcTotal / 2f
+        val lo = minOf(arcStart, arcStart + dir * arcTotal)
+        val clockwise = sin(Math.toRadians(mid.toDouble())) < 0.1
+        val base = oR + dp(8f) + borderPaint.strokeWidth / 2f
+        // Radial distance from [base] to the glyphs' foot; counter-clockwise
+        // text grows toward the pie, so its baseline sits a cap height further out.
+        fun baseline(offset: Float, cap: Float) = base + offset + if (clockwise) 0f else cap
+
+        // Height of the band the text occupies = clock digit height.
+        timePaint.textSize = oR * 0.5f
+        val band = capHeight(timePaint)
+        val timeR = baseline(0f, band)
+        val timeAng = if (timeText.isEmpty()) 0f else timePaint.measureText(timeText) / timeR
+
+        // Small lines sized so the block fills the band (~1.35 line spacing).
+        // Line 0 sits nearest the ring; later lines stack outward.
+        val n = infoLines.size
+        infoPaint.textSize = (band / (0.72f + 1.35f * (n - 1).coerceAtLeast(0))).coerceIn(dp(10f), dp(16f))
+        val cap = capHeight(infoPaint)
+        val step = if (n > 1) (band - cap) / (n - 1) else 0f
+        val first = if (n > 1) 0f else (band - cap) / 2f
+        val lineR = List(n) { baseline(first + it * step, cap) }
+        val lineAng = List(n) { infoPaint.measureText(infoLines[it]) / lineR[it] }
+        val blockAng = lineAng.maxOrNull() ?: 0f
+        val gapAng = if (timeAng > 0f && n > 0) dp(10f) / timeR else 0f
+
+        // As in LMT, the small block goes on the end of the arc that is higher
+        // on screen (where it reads best), aligned against the clock. If the
+        // path starts at the top (left edge), the block comes first.
+        val startDeg = if (clockwise) lo else lo + arcTotal
+        val endDeg = if (clockwise) lo + arcTotal else lo
+        val linesFirst = sin(Math.toRadians(startDeg.toDouble())) <
+            sin(Math.toRadians(endDeg.toDouble())) - 0.1
+        val lead = Math.toRadians(4.0).toFloat()   // positions along the arc, in radians
+
+        val timeAt = if (linesFirst) lead + blockAng + gapAng else lead
+        if (timeText.isNotEmpty()) drawOnArc(canvas, timeText, timePaint, cx, cy, timeR, lo, clockwise, timeAt)
+        infoLines.forEachIndexed { i, line ->
+            val at = if (linesFirst) lead + blockAng - lineAng[i]   // right-aligned, ending at the clock
+                     else lead + timeAng + gapAng                    // left-aligned, starting after it
+            drawOnArc(canvas, line, infoPaint, cx, cy, lineR[i], lo, clockwise, at)
+        }
+    }
+
+    private val capBounds = android.graphics.Rect()
+    private fun capHeight(paint: Paint): Float {
+        paint.getTextBounds("0", 0, 1, capBounds)
+        return capBounds.height().toFloat()
+    }
+
+    private fun drawOnArc(
+        canvas: Canvas, text: String, paint: Paint, cx: Float, cy: Float,
+        r: Float, lo: Float, clockwise: Boolean, angle: Float
+    ) {
+        infoPath.reset()
+        val oval = RectF(cx - r, cy - r, cx + r, cy + r)
+        if (clockwise) infoPath.addArc(oval, lo, arcTotal)
+        else infoPath.addArc(oval, lo + arcTotal, -arcTotal)
+        canvas.drawTextOnPath(text, infoPath, angle * r, 0f, paint)
     }
 
     private fun trim(s: String) = if (s.length > 10) s.take(9) + "…" else s

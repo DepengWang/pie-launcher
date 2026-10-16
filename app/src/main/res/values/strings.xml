@@ -141,4 +141,38 @@
         <item>#FFFFB300</item>
         <item>#FF43A047</item>
     </string-array>
+    <string name="pref_border_width_title">Slice border width (dp)</string>
+    <string name="pref_border_width_summary">0 = no border.</string>
+    <string name="pref_border_color_title">Slice border color</string>
+    <string name="pref_center_info_title">Ring info (outside the pie)</string>
+    <string name="pref_ring_info_summary">Clock and status lines curved around the open pie.</string>
+    <string-array name="ring_info_entries">
+        <item>Time</item>
+        <item>Memory</item>
+        <item>CPU</item>
+        <item>Notification count</item>
+    </string-array>
+    <string-array name="ring_info_values">
+        <item>time</item>
+        <item>memory</item>
+        <item>cpu</item>
+        <item>notifications</item>
+    </string-array>
+    <string name="pref_notif_access_title">Notification access</string>
+    <string name="pref_notif_access_summary">Needed only for the notification count. Pie counts notifications and never reads their content.</string>
+    <string name="notif_listener_label">Pie Launcher notification count</string>
+    <string name="pref_dim_title">Background dim (%)</string>
+    <string name="pref_dim_summary">Darken the screen behind the open pie. 0 = off.</string>
+    <string name="pref_inner_radius_title">Inner radius (dp)</string>
+    <string name="pref_outer_radius_title">Outer radius (dp)</string>
+    <string name="pref_outer_radius_summary">Kept at least 32 dp larger than the inner radius.</string>
+    <string name="pref_window_mode_title">Window mode</string>
+    <string-array name="window_mode_entries">
+        <item>Normal overlay</item>
+        <item>Accessibility overlay (needs Pie accessibility service)</item>
+    </string-array>
+    <string-array name="window_mode_values">
+        <item>overlay</item>
+        <item>accessibility</item>
+    </string-array>
 </resources>
