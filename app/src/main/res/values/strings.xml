@@ -145,6 +145,10 @@
     <string name="pref_border_width_title">Slice border width (dp)</string>
     <string name="pref_border_width_summary">0 = no border.</string>
     <string name="pref_border_color_title">Slice border color</string>
+    <string name="color_system">System default</string>
+    <string name="color_brightness">Brightness</string>
+    <string name="color_opacity">Opacity</string>
+    <string name="color_hex_hint">#AARRGGBB</string>
     <string name="pref_center_info_title">Ring info (outside the pie)</string>
     <string name="pref_ring_info_summary">Clock and status lines curved around the open pie.</string>
     <string-array name="ring_info_entries">

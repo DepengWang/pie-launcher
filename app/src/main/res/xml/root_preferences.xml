@@ -83,35 +83,26 @@
             app:defaultValue="both"
             app:useSimpleSummaryProvider="true" />
 
-        <ListPreference
+        <com.kj2431.pielauncher.prefs.ColorPreference
             app:key="pref_pie_bg_color"
             app:iconSpaceReserved="false"
             app:title="@string/pref_bg_color_title"
             app:summary="@string/pref_bg_color_summary"
-            app:entries="@array/color_entries"
-            app:entryValues="@array/color_values"
-            app:defaultValue="system"
-            app:useSimpleSummaryProvider="true" />
+            app:defaultValue="system" />
 
-        <ListPreference
+        <com.kj2431.pielauncher.prefs.ColorPreference
             app:key="pref_pie_color"
             app:iconSpaceReserved="false"
             app:title="@string/pref_primary_color_title"
             app:summary="@string/pref_primary_color_summary"
-            app:entries="@array/color_entries"
-            app:entryValues="@array/color_values"
-            app:defaultValue="system"
-            app:useSimpleSummaryProvider="true" />
+            app:defaultValue="system" />
 
-        <ListPreference
+        <com.kj2431.pielauncher.prefs.ColorPreference
             app:key="pref_pie_long_color"
             app:iconSpaceReserved="false"
             app:title="@string/pref_long_color_title"
             app:summary="@string/pref_long_color_summary"
-            app:entries="@array/color_entries"
-            app:entryValues="@array/color_values"
-            app:defaultValue="system"
-            app:useSimpleSummaryProvider="true" />
+            app:defaultValue="system" />
 
         <SeekBarPreference
             app:key="pref_pie_border_dp"
@@ -124,14 +115,11 @@
             app:showSeekBarValue="true"
             app:defaultValue="1" />
 
-        <ListPreference
+        <com.kj2431.pielauncher.prefs.ColorPreference
             app:key="pref_pie_border_color"
             app:iconSpaceReserved="false"
             app:title="@string/pref_border_color_title"
-            app:entries="@array/color_entries"
-            app:entryValues="@array/color_values"
-            app:defaultValue="#FFFFFFFF"
-            app:useSimpleSummaryProvider="true" />
+            app:defaultValue="#FFFFFFFF" />
 
         <MultiSelectListPreference
             app:key="pref_ring_info"

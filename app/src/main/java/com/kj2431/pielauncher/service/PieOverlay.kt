@@ -120,7 +120,7 @@ class PieOverlay(private val ctx: Context, private val windowType: Int) {
         stripParams[view]?.let { runCatching { wm.updateViewLayout(view, it) } }
     }
 
-    private data class PieColors(val bg: Int, val primary: Int, val longc: Int, val border: Int)
+    data class PieColors(val bg: Int, val primary: Int, val longc: Int, val border: Int)
 
     /** Resolves the three slice colors; "system" slots fall back to system defaults. */
     private fun resolveColors(): PieColors {
@@ -136,12 +136,15 @@ class PieOverlay(private val ctx: Context, private val windowType: Int) {
         )
     }
 
+    private fun systemDefaults(): PieColors = systemColors(ctx)
+
+    companion object {
     /**
      * Three defaults pulled from the device's dynamic palette (Android 12+).
      * Sorted by luminance: the darkest becomes the resting background, the
      * brightest the click highlight, the middle the long-press color.
      */
-    private fun systemDefaults(): PieColors {
+    fun systemColors(ctx: Context): PieColors {
         if (Build.VERSION.SDK_INT >= 31) {
             val c = listOf(
                 ContextCompat.getColor(ctx, android.R.color.system_accent1_700),
@@ -150,16 +153,17 @@ class PieOverlay(private val ctx: Context, private val windowType: Int) {
             ).sortedBy { androidx.core.graphics.ColorUtils.calculateLuminance(it) }
             return PieColors(bg = c[0], longc = c[1], primary = c[2], border = c[2])
         }
-        val primary = resolveThemePrimary()
+        val primary = resolveThemePrimary(ctx)
         return PieColors(bg = 0xFF262626.toInt(), primary = primary, longc = 0xFFEF9F27.toInt(), border = primary)
     }
 
-    private fun resolveThemePrimary(): Int {
+    private fun resolveThemePrimary(ctx: Context): Int {
         val themed = androidx.appcompat.view.ContextThemeWrapper(ctx, R.style.Theme_PieLauncher)
         val tv = android.util.TypedValue()
         return if (themed.theme.resolveAttribute(com.google.android.material.R.attr.colorPrimary, tv, true)) {
             if (tv.resourceId != 0) ContextCompat.getColor(themed, tv.resourceId) else tv.data
         } else 0xFF009688.toInt()
+    }
     }
 
     // ---- Slice building -----------------------------------------------------
