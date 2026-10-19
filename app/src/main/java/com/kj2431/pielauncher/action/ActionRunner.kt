@@ -102,6 +102,25 @@ object ActionRunner {
         ActionId.KILL_APP -> RootHelper.exec(
             "p=$(dumpsys activity activities | grep -m1 -E 'topResumedActivity|mResumedActivity' | sed -n 's#.* \\([a-zA-Z0-9_.]*\\)/.*#\\1#p'); [ -n \"\$p\" ] && am force-stop \"\$p\"; input keyevent 3")
         ActionId.KILL_ALL -> RootHelper.exec("am kill-all")
+        // Root first: some ROMs (e.g. OxygenOS 16) accept the accessibility
+        // TOGGLE_SPLIT_SCREEN action but do nothing. WM Shell's own command
+        // splits the foreground task to the bottom/right (the previous task
+        // fills the other half), or leaves split keeping the foreground task.
+        ActionId.SPLIT_SCREEN -> RootHelper.exec(
+            "w='dumpsys activity service SystemUIService WMShell'",
+            "t=$(dumpsys activity activities 2>/dev/null | grep -m1 topResumedActivity | sed -n 's/.* t\\([0-9]*\\)}.*/\\1/p')",
+            "if [ -z \"\$t\" ]; then false; elif \$w 2>/dev/null | grep -q 'isSplitActive=true'; then \$w splitscreen exitSplitScreen \$t >/dev/null; else \$w splitscreen moveToSideStage \$t 1 >/dev/null; fi")
+        // Relaunch an app's launcher intent with a windowing mode: if a floating
+        // window is showing, its task comes back fullscreen (1, maximise);
+        // otherwise the foreground app's task floats (5, the ROM's floating
+        // window). The home screen is never floated.
+        ActionId.FLOAT_WINDOW -> RootHelper.exec(
+            "d=$(dumpsys activity activities 2>/dev/null)",
+            "f=$(echo \"\$d\" | grep -m1 -E '\\* Task\\{.* type=standard .* visible=true .*mode=freeform' | sed -n 's/.* #\\([0-9]*\\) .*/\\1/p')",
+            "if [ -n \"\$f\" ]; then t=\$f; m=1; else t=$(echo \"\$d\" | grep -m1 topResumedActivity | sed -n 's/.* t\\([0-9]*\\)}.*/\\1/p'); m=5; echo \"\$d\" | grep -qE \"\\* Task\\{[^ ]* #\$t type=standard\" || t=; fi",
+            "p=; [ -n \"\$t\" ] && p=$(echo \"\$d\" | grep -m1 -E \"ActivityRecord\\{[^}]* t\$t\\}\" | sed -n 's#.* u[0-9]* \\([a-zA-Z0-9_.]*\\)/.*#\\1#p')",
+            "c=; [ -n \"\$p\" ] && c=$(cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.LAUNCHER \"\$p\" 2>/dev/null | tail -1)",
+            "case \"\$c\" in */*) am start --windowingMode \$m -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -f 0x10200000 -n \"\$c\" >/dev/null 2>&1;; *) false;; esac")
         ActionId.UNPIN -> RootHelper.exec("input keyevent 4", "input keyevent 187") // best-effort
         else -> false
     }

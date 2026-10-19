@@ -62,7 +62,8 @@ enum class ActionId(
     SCREENSHOT("Screenshot", "Take a screenshot", listOf(Mechanism.ACCESSIBILITY, Mechanism.ROOT), R.drawable.ic_image),
     UNPIN("Unpin", "Exit screen pinning (approx.)", listOf(Mechanism.ROOT), R.drawable.ic_pin),
     ASSISTANT("Assistant", "Activate the assistant", listOf(Mechanism.NONE), R.drawable.ic_assistant),
-    SPLIT_SCREEN("Split screen", "Toggle split screen", listOf(Mechanism.ACCESSIBILITY), R.drawable.ic_splitscreen);
+    SPLIT_SCREEN("Split screen", "Toggle split screen", listOf(Mechanism.ROOT, Mechanism.ACCESSIBILITY), R.drawable.ic_splitscreen),
+    FLOAT_WINDOW("Floating window", "Float the foreground app, or maximise a floating window", listOf(Mechanism.ROOT), R.drawable.ic_float_window);
 
     val needsArg: Boolean get() = argHint != null
 }
