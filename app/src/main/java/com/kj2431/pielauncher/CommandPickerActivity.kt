@@ -17,6 +17,7 @@ import com.kj2431.pielauncher.ui.ThemeHelper
 import androidx.appcompat.widget.Toolbar
 import com.kj2431.pielauncher.ui.EdgeToEdge
 import com.kj2431.pielauncher.action.ActionId
+import com.kj2431.pielauncher.action.Mechanism
 
 /** Lists every command; returns a slice token "act:ID" or "act:ID|arg". */
 class CommandPickerActivity : AppCompatActivity() {
@@ -43,7 +44,7 @@ class CommandPickerActivity : AppCompatActivity() {
     private fun pick(id: ActionId) {
         if (!id.needsArg) { ret("act:${id.name}"); return }
         val input = EditText(this).apply {
-            hint = id.argHint
+            id.argHint?.let { setHint(it) }
             inputType = InputType.TYPE_CLASS_TEXT
         }
         AlertDialog.Builder(this)
@@ -61,6 +62,12 @@ class CommandPickerActivity : AppCompatActivity() {
         setResult(Activity.RESULT_OK, Intent().putExtra(EXTRA_TOKEN, token)); finish()
     }
 
+    private fun mechanismLabel(m: Mechanism): Int = when (m) {
+        Mechanism.NONE -> R.string.mech_none
+        Mechanism.ACCESSIBILITY -> R.string.mech_accessibility
+        Mechanism.ROOT -> R.string.mech_root
+    }
+
     private inner class CmdAdapter : BaseAdapter() {
         override fun getCount() = commands.size
         override fun getItem(p: Int) = commands[p]
@@ -69,9 +76,9 @@ class CommandPickerActivity : AppCompatActivity() {
             val v = cv ?: layoutInflater.inflate(R.layout.row_command, parent, false)
             val c = commands[p]
             v.findViewById<ImageView>(R.id.icon).setImageResource(c.iconRes)
-            v.findViewById<TextView>(R.id.label).text = c.label
+            v.findViewById<TextView>(R.id.label).setText(c.label)
             v.findViewById<TextView>(R.id.desc).text =
-                c.description + "  [" + c.mechanisms.joinToString("|") { it.name.lowercase() } + "]"
+                getString(c.description) + "  [" + c.mechanisms.joinToString("|") { getString(mechanismLabel(it)) } + "]"
             return v
         }
     }

@@ -141,7 +141,7 @@ class SliceConfigActivity : AppCompatActivity() {
             val body = token.removePrefix("act:")
             val id = body.substringBefore("|")
             val arg = if (body.contains("|")) "  (" + body.substringAfter("|") + ")" else ""
-            (runCatching { ActionId.valueOf(id).label }.getOrDefault(id)) + arg
+            (runCatching { getString(ActionId.valueOf(id).label) }.getOrDefault(id)) + arg
         }
         else -> token
     }

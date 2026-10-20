@@ -1,10 +1,14 @@
 package com.kj2431.pielauncher.service
 
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.PixelFormat
 import android.graphics.drawable.Drawable
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.DisplayMetrics
 import android.view.Gravity
 import android.view.WindowManager
@@ -30,8 +34,18 @@ import com.kj2431.pielauncher.view.PieEdgeView
 class PieOverlay(private val ctx: Context, private val windowType: Int) {
 
     private val wm = ctx.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+    private val main = Handler(Looper.getMainLooper())
     private val views = mutableListOf<PieEdgeView>()
     private val stripParams = HashMap<PieEdgeView, WindowManager.LayoutParams>()
+
+    /**
+     * Slices are resolved once (labels and icons come from PackageManager, too
+     * slow to do on every touch) and again only when an app is installed,
+     * updated or removed. Settings changes rebuild the whole overlay anyway.
+     */
+    private var items: List<PieItem> = emptyList()
+    private var packageReceiver: BroadcastReceiver? = null
+    private var relayoutPending = false
 
     val isShowing: Boolean get() = views.isNotEmpty()
 
@@ -44,6 +58,10 @@ class PieOverlay(private val ctx: Context, private val windowType: Int) {
         val centerFrac = Prefs.centerPercent(ctx) / 100f
         val pieColors = resolveColors()
         val (screenW, screenH) = screenSize()
+        if (screenW > screenH && Prefs.hideInLandscape(ctx)) return
+
+        items = buildItems()
+        watchPackages()
 
         Prefs.edges(ctx).forEach { edge ->
             lateinit var view: PieEdgeView
@@ -70,7 +88,9 @@ class PieOverlay(private val ctx: Context, private val windowType: Int) {
                 ctx, edge,
                 showHint = Prefs.showActivationBars(ctx) || OverlaySettings.preview,
                 config = cfg,
-                itemsProvider = { buildItems() },
+                screenWidth = screenW,
+                screenHeight = screenH,
+                itemsProvider = { items },
                 onExpand = { expand(view) },
                 onCollapse = { collapse(view) }
             )
@@ -107,6 +127,38 @@ class PieOverlay(private val ctx: Context, private val windowType: Int) {
     fun removeEdges() {
         views.forEach { runCatching { wm.removeView(it) } }
         views.clear(); stripParams.clear()
+        packageReceiver?.let { runCatching { ctx.unregisterReceiver(it) } }
+        packageReceiver = null
+        relayoutPending = false
+    }
+
+    /**
+     * Rebuilds the edges for the current screen size (e.g. after rotation).
+     * If a pie is open, waits until its gesture ends instead of pulling the
+     * window out from under the finger.
+     */
+    fun relayout() {
+        if (views.any { it.isOpen }) { relayoutPending = true; return }
+        removeEdges()
+        addEdges()
+    }
+
+    private fun watchPackages() {
+        if (packageReceiver != null) return
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(c: Context, intent: Intent) { items = buildItems() }
+        }
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_PACKAGE_ADDED)
+            addAction(Intent.ACTION_PACKAGE_REMOVED)
+            addAction(Intent.ACTION_PACKAGE_CHANGED)
+            addAction(Intent.ACTION_PACKAGE_REPLACED)
+            addDataScheme("package")
+        }
+        runCatching {
+            ContextCompat.registerReceiver(ctx, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+            packageReceiver = receiver
+        }
     }
 
     /** Grow the edge window to full screen so the donut + gesture have room. */
@@ -129,6 +181,8 @@ class PieOverlay(private val ctx: Context, private val windowType: Int) {
     /** Shrink back to the thin activation strip once the gesture ends. */
     private fun collapse(view: PieEdgeView) {
         stripParams[view]?.let { runCatching { wm.updateViewLayout(view, it) } }
+        // Posted: this runs inside the view's own touch handling.
+        if (relayoutPending) main.post { if (relayoutPending) relayout() }
     }
 
     data class PieColors(val bg: Int, val primary: Int, val longc: Int, val border: Int)
@@ -150,6 +204,10 @@ class PieOverlay(private val ctx: Context, private val windowType: Int) {
     private fun systemDefaults(): PieColors = systemColors(ctx)
 
     companion object {
+    /** The parts of a configuration the edges depend on: screen shape (rotation) and language (labels). */
+    fun layoutKey(c: android.content.res.Configuration): String =
+        "${c.orientation}|${c.locales.toLanguageTags()}"
+
     /**
      * Three defaults pulled from the device's dynamic palette (Android 12+).
      * Sorted by luminance: the darkest becomes the resting background, the
@@ -181,12 +239,8 @@ class PieOverlay(private val ctx: Context, private val windowType: Int) {
     private fun buildItems(): List<PieItem> {
         val items = Prefs.slices(ctx).mapNotNull { token -> sliceFromToken(token) }
         if (items.isNotEmpty()) return items
-        return listOf(
-            PieItem("Home", ContextCompat.getDrawable(ctx, ActionId.HOME.iconRes)) { ActionRunner.run(ctx, ActionId.HOME) },
-            PieItem("Back", ContextCompat.getDrawable(ctx, ActionId.BACK.iconRes)) { ActionRunner.run(ctx, ActionId.BACK) },
-            PieItem("Recents", ContextCompat.getDrawable(ctx, ActionId.RECENTS.iconRes)) { ActionRunner.run(ctx, ActionId.RECENTS) },
-            PieItem("Notifs", ContextCompat.getDrawable(ctx, ActionId.NOTIFICATIONS.iconRes)) { ActionRunner.run(ctx, ActionId.NOTIFICATIONS) }
-        )
+        return listOf(ActionId.HOME, ActionId.BACK, ActionId.RECENTS, ActionId.NOTIFICATIONS)
+            .mapNotNull { sliceFromToken("act:${it.name}") }
     }
 
     /**
@@ -217,7 +271,7 @@ class PieOverlay(private val ctx: Context, private val windowType: Int) {
             val body = sub.removePrefix("act:")
             val id = runCatching { ActionId.valueOf(body.substringBefore("|")) }.getOrNull() ?: return null
             val arg = if (body.contains("|")) body.substringAfter("|") else null
-            Resolved(id.label, ContextCompat.getDrawable(ctx, id.iconRes)) { ActionRunner.run(ctx, id, arg) }
+            Resolved(ctx.getString(id.label), ContextCompat.getDrawable(ctx, id.iconRes)) { ActionRunner.run(ctx, id, arg) }
         }
         else -> null
     }

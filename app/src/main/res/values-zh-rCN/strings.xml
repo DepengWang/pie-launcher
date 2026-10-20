@@ -1,0 +1,266 @@
+<resources>
+    <string name="app_name">Pie Launcher</string>
+    <string name="settings">设置</string>
+    <string name="start">启动</string>
+    <string name="stop">停止</string>
+    <string name="service_running">扇形菜单正在运行</string>
+    <string name="service_channel">扇形菜单运行状态</string>
+
+    <!-- Settings screen -->
+    <string name="cat_activation">触发区域</string>
+    <string name="pref_edges_title">位置（哪些边缘）</string>
+    <string name="pref_edges_summary">触发条所在的屏幕边缘。默认：左侧和右侧。</string>
+    <string name="pref_gravity_title">对齐方式（沿边缘）</string>
+    <string name="pref_gravity_summary">选择触发条在每条边缘上的位置。</string>
+    <string name="pref_thickness_title">宽度（dp）</string>
+    <string name="pref_length_title">长度（边缘的 %）</string>
+
+    <string name="cat_behavior">行为</string>
+    <string name="pref_root_title">启用 root 操作</string>
+    <string name="pref_root_summary">允许扇形切片通过 su 执行需要特权的命令。</string>
+
+    <string-array name="edge_entries">
+        <item>左侧</item>
+        <item>右侧</item>
+        <item>顶部</item>
+        <item>底部</item>
+    </string-array>
+
+    <string-array name="gravity_entries">
+        <item>起始（上 / 左）</item>
+        <item>居中</item>
+        <item>末尾（下 / 右）</item>
+    </string-array>
+    <string name="cat_pie">扇形菜单</string>
+    <string name="pref_apps_title">扇形应用</string>
+    <string name="pref_apps_summary">选择要显示为切片的应用（点选顺序即切片顺序）。</string>
+    <string name="save_selection">保存选择</string>
+    <string name="saved_n_apps">已保存 %d 个应用</string>
+    <string name="configure_pie">配置扇形菜单</string>
+    <string name="pref_configure_summary">添加应用和 root / 无障碍命令作为切片，调整顺序或删除。</string>
+    <string name="add_app">添加应用</string>
+    <string name="add_apps">添加应用</string>
+    <string name="add_selected">添加所选</string>
+    <string name="add_command">添加命令</string>
+    <string name="move_up">上移</string>
+    <string name="move_down">下移</string>
+    <string name="remove">删除</string>
+    <string name="type_app">应用</string>
+    <string name="type_command">命令</string>
+    <string name="pref_accessibility_title">无障碍操作</string>
+    <string name="pref_accessibility_summary">启用 Pie 无障碍服务，以使用返回、多任务、通知栏、电源菜单、分屏等操作。</string>
+    <string name="accessibility_desc">让扇形切片触发系统全局操作（返回、多任务、通知栏、电源菜单、分屏）。不会读取屏幕内容。</string>
+    <string name="set_longpress">设置长按操作</string>
+    <string name="clear_longpress">清除长按操作</string>
+    <string name="long_prefix">  ·  长按：%s</string>
+    <string name="pref_show_bars_title">显示触发区域</string>
+    <string name="pref_show_bars_summary">在可以呼出扇形菜单的位置画一条淡色的条。关闭 = 完全透明。</string>
+    <string name="cat_timing">时间与反馈</string>
+    <string name="pref_label_title">切片标签</string>
+    <string name="pref_response_title">响应时间（毫秒）</string>
+    <string name="pref_anim_title">动画时间（毫秒）</string>
+    <string name="pref_anim_summary">切片展开的时间；时钟和信息文字按它的比例随后出现（与 LMT 相同）。0 = 无动画。</string>
+    <string name="pref_longpress_title">长按时间（毫秒）</string>
+    <string name="pref_haptic_title">振动时长（毫秒）</string>
+    <string-array name="label_entries">
+        <item>图标 + 文字</item>
+        <item>仅图标</item>
+        <item>仅文字</item>
+    </string-array>
+    <string name="pref_center_title">中心位置（边缘的 %）</string>
+    <string name="cat_appearance">外观</string>
+    <string name="pref_theme_title">主题</string>
+    <string name="pref_below_kb_title">扇形菜单位于键盘下方</string>
+    <string name="pref_below_kb_summary">让屏幕键盘显示在扇形菜单前面。</string>
+    <string-array name="theme_entries">
+        <item>跟随系统</item>
+        <item>浅色</item>
+        <item>深色</item>
+        <item>AMOLED 纯黑</item>
+    </string-array>
+    <string name="pref_bg_color_title">背景颜色</string>
+    <string name="pref_bg_color_summary">未选中切片（静止状态）的颜色。</string>
+    <string name="pref_primary_color_title">点击颜色</string>
+    <string name="pref_primary_color_summary">手指所在切片的高亮颜色。</string>
+    <string name="pref_long_color_title">长按颜色</string>
+    <string name="pref_long_color_summary">长按触发后的高亮颜色。</string>
+    <string-array name="color_entries">
+        <item>跟随系统</item>
+        <item>黑色</item>
+        <item>深灰</item>
+        <item>灰色</item>
+        <item>浅灰</item>
+        <item>白色</item>
+        <item>青色</item>
+        <item>蓝色</item>
+        <item>靛蓝</item>
+        <item>紫色</item>
+        <item>粉色</item>
+        <item>红色</item>
+        <item>橙色</item>
+        <item>琥珀色</item>
+        <item>绿色</item>
+    </string-array>
+    <string name="pref_border_width_title">切片边框宽度（dp）</string>
+    <string name="pref_border_width_summary">0 = 无边框。</string>
+    <string name="pref_border_color_title">切片边框颜色</string>
+    <string name="color_system">跟随系统</string>
+    <string name="color_brightness">亮度</string>
+    <string name="color_opacity">不透明度</string>
+    <string name="pref_center_info_title">圆环信息（扇形外侧）</string>
+    <string name="pref_ring_info_summary">沿打开的扇形外侧弯曲显示的时钟和状态信息。</string>
+    <string-array name="ring_info_entries">
+        <item>时钟</item>
+        <item>概览页（日期、电量、铃声、网络）</item>
+        <item>系统页（通知数量、CPU、内存）</item>
+        <item>通知页（应用、标题和内容；锁屏时隐藏）</item>
+    </string-array>
+    <string name="pref_info_interval_title">圆环信息翻页间隔（秒）</string>
+    <string name="pref_slice_gap_title">切片间隙（度）</string>
+    <string name="pref_slice_gap_summary">0 = 切片相连，仅用边框分隔。</string>
+    <string name="pref_notif_access_title">通知使用权</string>
+    <string name="pref_notif_access_summary">显示通知数量和通知页需要此权限。内容只保存在内存中，锁屏时不显示。</string>
+    <string name="notif_listener_label">Pie Launcher 通知计数</string>
+    <string name="pref_dim_title">背景变暗（%）</string>
+    <string name="pref_dim_summary">打开扇形菜单时调暗背后的屏幕。0 = 关闭。</string>
+    <string name="pref_inner_radius_title">内半径（dp）</string>
+    <string name="pref_outer_radius_title">外半径（dp）</string>
+    <string name="pref_outer_radius_summary">始终比内半径大至少 32 dp。</string>
+    <string name="pref_window_mode_title">窗口模式</string>
+    <string-array name="window_mode_entries">
+        <item>普通悬浮窗</item>
+        <item>无障碍悬浮窗（需要 Pie 无障碍服务）</item>
+    </string-array>
+    <string name="pref_language_title">语言</string>
+    <string-array name="language_entries">
+        <item>跟随系统</item>
+        <item>简体中文</item>
+        <item>English</item>
+    </string-array>
+    <string name="cat_backup">备份与恢复</string>
+    <string name="pref_export_title">导出配置</string>
+    <string name="pref_export_summary">把所有设置和扇形切片保存为 JSON 文件。</string>
+    <string name="pref_import_title">导入配置</string>
+    <string name="pref_import_summary">用之前导出的文件替换当前设置。</string>
+    <string name="backup_import_confirm">当前的所有设置和扇形切片都会被文件中的内容替换。未安装的应用会被跳过。权限以及扇形菜单是否在运行不会改变。</string>
+    <string name="backup_import_action">导入</string>
+    <string name="backup_exported">已导出 %d 项设置</string>
+    <string name="backup_export_failed">导出失败：%s</string>
+    <string name="backup_imported">已导入 %d 项设置</string>
+    <string name="backup_import_failed">导入失败：%s</string>
+    <string name="backup_invalid">这不是 Pie Launcher 的配置文件</string>
+    <string name="backup_too_new">这个文件来自更新版本的 Pie Launcher，请先升级应用</string>
+    <string name="pref_hide_landscape_title">横屏时隐藏</string>
+    <string name="pref_hide_landscape_summary">屏幕横向时移除触发条（适合游戏、视频）。</string>
+
+    <!-- Main screen status -->
+    <string name="status_overlay">悬浮窗权限：%s</string>
+    <string name="status_granted">已授予</string>
+    <string name="status_not_granted">未授予</string>
+    <string name="status_service">服务：%s</string>
+    <string name="status_running">运行中</string>
+    <string name="status_stopped">已停止</string>
+    <string name="status_window_mode">窗口模式：%s</string>
+    <string name="status_mode_overlay">普通悬浮窗</string>
+    <string name="status_mode_accessibility">无障碍悬浮窗</string>
+    <string name="status_accessibility">无障碍服务：%s</string>
+    <string name="status_connected">已连接</string>
+    <string name="status_not_connected">未连接（触发条已隐藏）</string>
+    <string name="status_edges">边缘：%1$s | %2$ddp | 中心 %3$d%%</string>
+
+    <!-- Ring info -->
+    <string name="ring_battery">电量 %s</string>
+    <string name="ring_ringer">铃声</string>
+    <string name="ring_ringer_silent">铃声 | 静音</string>
+    <string name="ring_ringer_vibrate">铃声 | 振动</string>
+    <string name="ring_ringer_volume">铃声 | %d</string>
+    <string name="ring_not_connected">未连接</string>
+    <string name="ring_connected">已连接</string>
+    <string name="ring_connected_via">已连接 | %s</string>
+    <string name="ring_notif_grant">通知：请授予权限</string>
+    <string name="ring_notif_none">没有通知</string>
+    <plurals name="ring_notif_count">
+        <item quantity="other">%d 条通知</item>
+    </plurals>
+    <string name="ring_cpu_cores">核心 %s 在线</string>
+    <string name="ring_memory">已用 %1$s | 可用 %2$s</string>
+
+    <!-- Commands -->
+    <string name="action_unavailable">%s：没有可用的执行方式（请启用 root 或无障碍服务）</string>
+    <string name="mech_none">普通</string>
+    <string name="mech_accessibility">无障碍</string>
+    <string name="mech_root">root</string>
+    <string name="act_home">主页</string>
+    <string name="act_home_desc">触发主页键</string>
+    <string name="act_home_long">主页（长按）</string>
+    <string name="act_home_long_desc">长按主页键</string>
+    <string name="act_menu">菜单</string>
+    <string name="act_menu_desc">触发菜单键</string>
+    <string name="act_menu_long">菜单（长按）</string>
+    <string name="act_menu_long_desc">长按菜单键</string>
+    <string name="act_back">返回</string>
+    <string name="act_back_desc">触发返回键</string>
+    <string name="act_back_long">返回（长按）</string>
+    <string name="act_back_long_desc">长按返回键</string>
+    <string name="act_recents">多任务</string>
+    <string name="act_recents_desc">打开最近任务</string>
+    <string name="act_search">搜索</string>
+    <string name="act_search_desc">打开搜索</string>
+    <string name="act_voice_search">语音搜索</string>
+    <string name="act_voice_search_desc">打开语音搜索</string>
+    <string name="act_next_app">下一个应用</string>
+    <string name="act_next_app_desc">切换到最久未用的应用；重复使用可依次轮换所有应用</string>
+    <string name="act_prev_app">上一个应用</string>
+    <string name="act_prev_app_desc">切换到上一个应用</string>
+    <string name="act_last_app">最近应用</string>
+    <string name="act_last_app_desc">切换到上次使用的应用</string>
+    <string name="act_notifications">通知栏</string>
+    <string name="act_notifications_desc">打开通知栏</string>
+    <string name="act_quick_settings">快捷设置</string>
+    <string name="act_quick_settings_desc">打开快捷设置面板</string>
+    <string name="act_keyboard">键盘</string>
+    <string name="act_keyboard_desc">打开键盘</string>
+    <string name="act_power_menu">电源菜单</string>
+    <string name="act_power_menu_desc">打开电源菜单</string>
+    <string name="act_lock_screen">锁屏</string>
+    <string name="act_lock_screen_desc">锁定屏幕</string>
+    <string name="act_wifi">Wi-Fi</string>
+    <string name="act_wifi_desc">开关 Wi-Fi</string>
+    <string name="act_data">移动数据</string>
+    <string name="act_data_desc">开关移动数据</string>
+    <string name="act_bluetooth">蓝牙</string>
+    <string name="act_bluetooth_desc">开关蓝牙</string>
+    <string name="act_location">定位</string>
+    <string name="act_location_desc">开关定位</string>
+    <string name="act_immersive">沉浸模式</string>
+    <string name="act_immersive_desc">开关沉浸模式</string>
+    <string name="act_key">按键</string>
+    <string name="act_key_desc">触发任意键码</string>
+    <string name="act_key_hint">键码（例如 26）</string>
+    <string name="act_activity">Activity</string>
+    <string name="act_activity_desc">启动指定的 Activity 组件</string>
+    <string name="act_activity_hint">包名/.Activity</string>
+    <string name="act_webpage">网页</string>
+    <string name="act_webpage_desc">打开网址</string>
+    <string name="act_webpage_hint">https://…</string>
+    <string name="act_script">脚本</string>
+    <string name="act_script_desc">运行 shell 脚本</string>
+    <string name="act_script_hint">shell 命令</string>
+    <string name="act_kill_app">结束应用</string>
+    <string name="act_kill_app_desc">强行停止前台应用并回到主页</string>
+    <string name="act_kill_all">结束全部</string>
+    <string name="act_kill_all_desc">结束后台应用</string>
+    <string name="act_tasker">Tasker 任务</string>
+    <string name="act_tasker_desc">运行 Tasker 任务</string>
+    <string name="act_tasker_hint">任务名称</string>
+    <string name="act_screenshot">截屏</string>
+    <string name="act_screenshot_desc">截取屏幕</string>
+    <string name="act_unpin">取消固定</string>
+    <string name="act_unpin_desc">退出屏幕固定（近似实现）</string>
+    <string name="act_assistant">助理</string>
+    <string name="act_assistant_desc">打开语音助理</string>
+    <string name="act_split_screen">分屏</string>
+    <string name="act_split_screen_desc">开关分屏</string>
+    <string name="act_float_window">浮窗</string>
+    <string name="act_float_window_desc">让前台应用变为浮窗，或将浮窗最大化</string>
+</resources>

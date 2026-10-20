@@ -11,6 +11,7 @@ import android.provider.Settings
 import android.speech.RecognizerIntent
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
+import com.kj2431.pielauncher.R
 import com.kj2431.pielauncher.prefs.Prefs
 import com.kj2431.pielauncher.root.RootHelper
 import com.kj2431.pielauncher.service.PieAccessibilityService
@@ -19,28 +20,34 @@ import android.accessibilityservice.AccessibilityService as AS
 
 /**
  * Executes a pie command by choosing the first available mechanism from
- * [ActionId.mechanisms]. Root work runs off the main thread to avoid ANRs.
+ * [ActionId.mechanisms]. Accessibility and plain mechanisms are quick and run
+ * on the caller's (main) thread; from the first root mechanism on, the rest
+ * moves to [io], so a slow su command never holds up Back or Home.
  */
 object ActionRunner {
 
     private val io = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
 
-    fun run(ctx: Context, id: ActionId, arg: String? = null) {
-        io.execute {
-            val ok = mechanisms(ctx, id).any { m -> tryMechanism(ctx, id, arg, m) }
-            if (!ok) toast(ctx, "${id.label}: no available method (enable root or accessibility)")
+    fun run(ctx: Context, id: ActionId, arg: String? = null) = attempt(ctx, id, arg, id.mechanisms, onIo = false)
+
+    private fun attempt(ctx: Context, id: ActionId, arg: String?, list: List<Mechanism>, onIo: Boolean) {
+        for ((i, m) in list.withIndex()) {
+            if (m == Mechanism.ROOT && !onIo) {
+                if (!Prefs.rootActionsEnabled(ctx)) continue
+                io.execute { attempt(ctx, id, arg, list.drop(i), onIo = true) }
+                return
+            }
+            if (available(ctx, m) && tryMechanism(ctx, id, arg, m)) return
         }
+        toast(ctx, ctx.getString(R.string.action_unavailable, ctx.getString(id.label)))
     }
 
-    private fun mechanisms(ctx: Context, id: ActionId): List<Mechanism> =
-        id.mechanisms.filter {
-            when (it) {
-                Mechanism.NONE -> true
-                Mechanism.ACCESSIBILITY -> PieAccessibilityService.isAvailable
-                Mechanism.ROOT -> Prefs.rootActionsEnabled(ctx) && RootHelper.isAvailable()
-            }
-        }
+    private fun available(ctx: Context, m: Mechanism): Boolean = when (m) {
+        Mechanism.NONE -> true
+        Mechanism.ACCESSIBILITY -> PieAccessibilityService.isAvailable
+        Mechanism.ROOT -> Prefs.rootActionsEnabled(ctx) && RootHelper.isAvailable()
+    }
 
     private fun tryMechanism(ctx: Context, id: ActionId, arg: String?, m: Mechanism): Boolean =
         when (m) {
@@ -52,6 +59,12 @@ object ActionRunner {
     // ---- Accessibility (global actions) ------------------------------------
     private fun accessibility(id: ActionId): Boolean {
         val s = PieAccessibilityService.instance ?: return false
+        if (id == ActionId.LAST_APP || id == ActionId.PREV_APP || id == ActionId.NEXT_APP) {
+            // Recents twice switches to the previous task on most launchers.
+            if (!s.performGlobalAction(AS.GLOBAL_ACTION_RECENTS)) return false
+            main.postDelayed({ s.performGlobalAction(AS.GLOBAL_ACTION_RECENTS) }, 250)
+            return true
+        }
         val action = when (id) {
             ActionId.HOME -> AS.GLOBAL_ACTION_HOME
             ActionId.BACK -> AS.GLOBAL_ACTION_BACK
@@ -79,9 +92,8 @@ object ActionRunner {
         ActionId.BACK_LONG -> RootHelper.exec("input keyevent --longpress 4")
         ActionId.RECENTS -> RootHelper.pressKey(187)
         ActionId.SEARCH -> RootHelper.pressKey(84)
-        ActionId.LAST_APP, ActionId.NEXT_APP, ActionId.PREV_APP ->
-            // Approximate: double-tap recents toggles to the previous task.
-            RootHelper.exec("input keyevent 187", "sleep 0.15", "input keyevent 187")
+        ActionId.LAST_APP, ActionId.PREV_APP -> switchApp(ctx, oldest = false)
+        ActionId.NEXT_APP -> switchApp(ctx, oldest = true)
         ActionId.NOTIFICATIONS -> RootHelper.exec("cmd statusbar expand-notifications")
         ActionId.QUICK_SETTINGS -> RootHelper.exec("cmd statusbar expand-settings")
         ActionId.LOCK_SCREEN -> RootHelper.pressKey(26)
@@ -123,6 +135,53 @@ object ActionRunner {
             "case \"\$c\" in */*) am start --windowingMode \$m -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -f 0x10200000 -n \"\$c\" >/dev/null 2>&1;; *) false;; esac")
         ActionId.UNPIN -> RootHelper.exec("input keyevent 4", "input keyevent 187") // best-effort
         else -> false
+    }
+
+    /**
+     * Brings another recent app to the front by starting its launcher intent,
+     * which resumes its existing task the way a home-screen tap does. The
+     * default is the most recent app other than the foreground one; [oldest]
+     * picks the least recent instead, so repeating it cycles through them all.
+     */
+    private fun switchApp(ctx: Context, oldest: Boolean): Boolean {
+        val recents = RootHelper.query("dumpsys activity recents") ?: return false
+        val top = RootHelper.query("dumpsys activity activities | grep -m1 topResumedActivity").orEmpty()
+        val topTask = Regex(""" t(\d+)\}""").find(top)?.groupValues?.get(1)
+        val topPkg = Regex(""" u\d+ ([^/ ]+)/""").find(top)?.groupValues?.get(1)
+        val pkgs = recentPackages(recents, skipTask = topTask)
+            .filter { it != topPkg && it != ctx.packageName }
+            .distinct()
+        val pm = ctx.packageManager
+        val launch = (if (oldest) pkgs.asReversed() else pkgs)
+            .firstNotNullOfOrNull { pm.getLaunchIntentForPackage(it) } ?: return false
+        return startActivity(ctx, launch.addFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED))
+    }
+
+    /**
+     * Packages of this user's standard (non-home) tasks in `dumpsys activity
+     * recents`, most recent first. Tasks of other users (e.g. cloned "dual"
+     * apps) are skipped, since their launcher intent would open our user's copy.
+     */
+    private fun recentPackages(dump: String, skipTask: String?): List<String> {
+        val myUser = (android.os.Process.myUid() / 100_000).toString()
+        val out = mutableListOf<String>()
+        var take = false
+        dump.lineSequence().map { it.trim() }.forEach { line ->
+            when {
+                line.startsWith("* Recent #") -> {
+                    val task = Regex(""" #(\d+) """).find(line)?.groupValues?.get(1)
+                    take = " type=standard " in line && task != skipTask
+                }
+                take && line.startsWith("userId=") ->
+                    take = line.substringAfter("userId=").substringBefore(' ') == myUser
+                // Older releases print realActivity=, newer ones mActivityComponent=.
+                take && (line.startsWith("realActivity=") || line.startsWith("mActivityComponent=")) -> {
+                    out += line.substringAfter('=').substringBefore('/').trim()
+                    take = false
+                }
+            }
+        }
+        return out
     }
 
     // ---- Plain Android (no special privilege) ------------------------------

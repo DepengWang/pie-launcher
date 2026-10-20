@@ -11,6 +11,15 @@
             app:entryValues="@array/theme_values"
             app:defaultValue="system"
             app:useSimpleSummaryProvider="true" />
+
+        <ListPreference
+            app:key="pref_language"
+            app:iconSpaceReserved="false"
+            app:title="@string/pref_language_title"
+            app:entries="@array/language_entries"
+            app:entryValues="@array/language_values"
+            app:defaultValue="system"
+            app:useSimpleSummaryProvider="true" />
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/cat_activation" app:iconSpaceReserved="false">
@@ -61,6 +70,13 @@
             app:seekBarIncrement="1"
             app:showSeekBarValue="true"
             app:defaultValue="60" />
+
+        <SwitchPreferenceCompat
+            app:key="pref_hide_landscape"
+            app:iconSpaceReserved="false"
+            app:title="@string/pref_hide_landscape_title"
+            app:summary="@string/pref_hide_landscape_summary"
+            app:defaultValue="false" />
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/cat_pie" app:iconSpaceReserved="false">
@@ -262,6 +278,21 @@
             app:summary="@string/pref_accessibility_summary">
             <intent android:action="android.settings.ACCESSIBILITY_SETTINGS" />
         </Preference>
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/cat_backup" app:iconSpaceReserved="false">
+        <Preference
+            app:key="pref_export_config"
+            app:iconSpaceReserved="false"
+            app:persistent="false"
+            app:title="@string/pref_export_title"
+            app:summary="@string/pref_export_summary" />
+        <Preference
+            app:key="pref_import_config"
+            app:iconSpaceReserved="false"
+            app:persistent="false"
+            app:title="@string/pref_import_title"
+            app:summary="@string/pref_import_summary" />
     </PreferenceCategory>
 
 </PreferenceScreen>

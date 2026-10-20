@@ -23,7 +23,7 @@ class PieLauncherService : Service() {
 
     /** Only used in normal overlay mode; accessibility mode lives in [PieAccessibilityService]. */
     private var overlay: PieOverlay? = null
-    private var orientation = Configuration.ORIENTATION_UNDEFINED
+    private var layoutKey = ""
 
     /**
      * Rebuilds this service's own edges as soon as a setting changes, so edits
@@ -39,19 +39,19 @@ class PieLauncherService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        orientation = resources.configuration.orientation
+        layoutKey = PieOverlay.layoutKey(resources.configuration)
         startInForeground()
         applyWindowMode()
         if (Prefs.rootActionsEnabled(this)) RootHelper.prewarm()
         OverlaySettings.register(this, onSettingsChanged)
     }
 
-    /** Strip size and position depend on the current edge lengths; re-lay them out on rotation. */
+    /** Strips depend on the edge lengths and slice labels on the language; rebuild when either changes. */
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        if (newConfig.orientation != orientation) {
-            orientation = newConfig.orientation
-            rebuildOwnEdges()
+        if (PieOverlay.layoutKey(newConfig) != layoutKey) {
+            layoutKey = PieOverlay.layoutKey(newConfig)
+            overlay?.relayout()
         }
     }
 

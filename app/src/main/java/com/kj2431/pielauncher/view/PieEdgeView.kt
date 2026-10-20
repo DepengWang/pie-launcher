@@ -18,6 +18,8 @@ import android.view.View
 import com.kj2431.pielauncher.info.RingInfo
 import com.kj2431.pielauncher.model.PieItem
 import com.kj2431.pielauncher.prefs.Prefs.Edge
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.hypot
@@ -58,6 +60,8 @@ class PieEdgeView(
     val edge: Edge,
     private val showHint: Boolean,
     private val config: PieConfig,
+    private val screenWidth: Int,
+    private val screenHeight: Int,
     private val itemsProvider: () -> List<PieItem>,
     private val onExpand: () -> Unit,
     private val onCollapse: () -> Unit
@@ -65,6 +69,7 @@ class PieEdgeView(
 
     private enum class Mode { IDLE, PIE }
     private var mode = Mode.IDLE
+    val isOpen: Boolean get() = mode == Mode.PIE
 
     private val innerRadius = dp(config.innerRadiusDp)
     private val outerRadius = dp(config.outerRadiusDp)
@@ -117,21 +122,29 @@ class PieEdgeView(
     private var switchAt = 0L                          // when the current page switch began, 0 = none
     private var prevLines: List<String> = emptyList()  // page being switched away from
     private val infoPath = Path()
+    /** Bumped on every info request and on close, so stale background results are dropped. */
+    private var infoGen = 0
     /** Rotates the small-text page (and refreshes the data) while the pie is open. */
     private val rotateInfo = object : Runnable {
         override fun run() {
             if (mode != Mode.PIE) return
             val old = infoPages.getOrNull(pageIndex).orEmpty()
-            buildInfo()
-            if (infoPages.size > 1) {
-                prevLines = old
-                pageIndex = (pageIndex + 1) % infoPages.size
-                switchAt = System.currentTimeMillis()
+            buildInfo {
+                if (infoPages.size > 1) {
+                    prevLines = old
+                    pageIndex = (pageIndex + 1) % infoPages.size
+                    switchAt = System.currentTimeMillis()
+                }
             }
-            invalidate()
             handler.postDelayed(this, config.infoIntervalMs)
         }
     }
+
+    // Reused every frame instead of allocating while the pie animates.
+    private val slicePath = Path()
+    private val outerRect = RectF()
+    private val innerRect = RectF()
+    private val arcRect = RectF()
 
     private var items: List<PieItem> = emptyList()
     private var centerRawX = 0f
@@ -211,7 +224,8 @@ class PieEdgeView(
     private fun openPie() {
         items = itemsProvider()
         if (items.isEmpty()) return
-        pageIndex = 0; switchAt = 0L; prevLines = emptyList()
+        clampCenter()
+        pageIndex = 0; switchAt = 0L; prevLines = emptyList(); infoPages = emptyList()
         buildInfo()
         handler.removeCallbacks(rotateInfo)
         handler.postDelayed(rotateInfo, config.infoIntervalMs)
@@ -223,9 +237,24 @@ class PieEdgeView(
         invalidate()
     }
 
+    /**
+     * Keeps the whole donut on screen: near either end of an edge the center
+     * moves inward along that edge, so no slice is cut off. The finger then
+     * starts off-center, which is fine since only the drag target matters.
+     */
+    private fun clampCenter() {
+        val margin = outerRadius + borderPaint.strokeWidth / 2f
+        fun clamp(v: Float, size: Int) = if (size > 2 * margin) v.coerceIn(margin, size - margin) else v
+        when (edge) {
+            Edge.LEFT, Edge.RIGHT -> centerRawY = clamp(centerRawY, screenHeight)
+            Edge.TOP, Edge.BOTTOM -> centerRawX = clamp(centerRawX, screenWidth)
+        }
+    }
+
     private fun reset() {
         handler.removeCallbacks(armLong)
         handler.removeCallbacks(rotateInfo)
+        infoGen++
         mode = Mode.IDLE
         activeIndex = -1; longArmed = false; expandedReady = false
         lastOriginX = Int.MIN_VALUE; lastOriginY = Int.MIN_VALUE
@@ -245,8 +274,7 @@ class PieEdgeView(
         // settles; drawing in that gap paints the pie at the strip's old spot
         // (the phantom flash). We don't assume the fullscreen origin is (0,0) —
         // it may be inset by the status bar — only that it's stable once settled.
-        val dm = resources.displayMetrics
-        if (width < dm.widthPixels / 2 || height < dm.heightPixels / 2) {
+        if (width < screenWidth / 2 || height < screenHeight / 2) {
             openAt = System.currentTimeMillis()
             lastOriginX = Int.MIN_VALUE; lastOriginY = Int.MIN_VALUE
             postInvalidateOnAnimation()
@@ -278,25 +306,24 @@ class PieEdgeView(
         if (config.dimPercent > 0) canvas.drawColor(Color.argb((config.dimPercent * 255 / 100 * clockIn).toInt(), 0, 0, 0))
 
         val per = arcTotal / items.size
-        val outer = RectF(cx - oR, cy - oR, cx + oR, cy + oR)
-        val inner = RectF(cx - iR, cy - iR, cx + iR, cy + iR)
+        outerRect.set(cx - oR, cy - oR, cx + oR, cy + oR)
+        innerRect.set(cx - iR, cy - iR, cx + iR, cy + iR)
 
         items.forEachIndexed { i, item ->
             val showLong = i == activeIndex && longArmed
             val a0 = arcStart + dir * (i * per * fan) + dir * (gapDeg / 2f)
             val seg = dir * (per - gapDeg)
-            val path = Path().apply {
-                arcTo(outer, a0, seg)
-                arcTo(inner, a0 + seg, -seg)
-                close()
-            }
+            slicePath.reset()
+            slicePath.arcTo(outerRect, a0, seg)
+            slicePath.arcTo(innerRect, a0 + seg, -seg)
+            slicePath.close()
             val paint = when {
                 showLong -> longPaint
                 i == activeIndex -> activePaint
                 else -> slicePaint
             }
-            canvas.drawPath(path, paint)
-            if (config.borderWidthDp > 0f) canvas.drawPath(path, borderPaint)
+            canvas.drawPath(slicePath, paint)
+            if (config.borderWidthDp > 0f) canvas.drawPath(slicePath, borderPaint)
 
             val mid = Math.toRadians((arcStart + dir * ((i * fan + 0.5f) * per)).toDouble())
             val r = (iR + oR) / 2f
@@ -333,15 +360,37 @@ class PieEdgeView(
     private fun accelDecel(t: Float) = (cos((t + 1) * Math.PI) / 2.0 + 0.5).toFloat()
     private fun decel(t: Float) = 1f - (1f - t) * (1f - t)
 
-    private fun buildInfo() {
+    /**
+     * Updates the clock right away and gathers the info pages (CPU files,
+     * memory, network...) off the main thread, so opening the pie never waits
+     * on them; they only fade in a few animation steps later anyway.
+     * [onReady] runs on the main thread once the new pages are in place.
+     */
+    private fun buildInfo(onReady: () -> Unit = {}) {
         val want = config.ringInfo
         if (RingInfo.TIME in want) RingInfo.clock(context).let { timeText = it.first; timeLabel = it.second }
         else { timeText = ""; timeLabel = "" }
-        infoPages = listOfNotNull(
-            if (RingInfo.OVERVIEW in want) RingInfo.overview(context) else null,
-            if (RingInfo.SYSTEM in want) RingInfo.system(context) else null
-        ) + if (RingInfo.NOTIFICATIONS in want) RingInfo.notificationPages(context) else emptyList()
-        if (pageIndex >= infoPages.size) pageIndex = 0
+        if (RingInfo.OVERVIEW !in want && RingInfo.SYSTEM !in want && RingInfo.NOTIFICATIONS !in want) {
+            infoPages = emptyList(); pageIndex = 0
+            return
+        }
+        val gen = ++infoGen
+        val ctx = context
+        infoExecutor.execute {
+            val pages = runCatching {
+                listOfNotNull(
+                    if (RingInfo.OVERVIEW in want) RingInfo.overview(ctx) else null,
+                    if (RingInfo.SYSTEM in want) RingInfo.system(ctx) else null
+                ) + if (RingInfo.NOTIFICATIONS in want) RingInfo.notificationPages(ctx) else emptyList()
+            }.getOrDefault(emptyList())
+            handler.post {
+                if (gen != infoGen || mode != Mode.PIE) return@post
+                infoPages = pages
+                if (pageIndex >= infoPages.size) pageIndex = 0
+                onReady()
+                invalidate()
+            }
+        }
     }
 
     /**
@@ -419,13 +468,20 @@ class PieEdgeView(
         r: Float, lo: Float, clockwise: Boolean, angle: Float
     ) {
         infoPath.reset()
-        val oval = RectF(cx - r, cy - r, cx + r, cy + r)
-        if (clockwise) infoPath.addArc(oval, lo, arcTotal)
-        else infoPath.addArc(oval, lo + arcTotal, -arcTotal)
+        arcRect.set(cx - r, cy - r, cx + r, cy + r)
+        if (clockwise) infoPath.addArc(arcRect, lo, arcTotal)
+        else infoPath.addArc(arcRect, lo + arcTotal, -arcTotal)
         canvas.drawTextOnPath(text, infoPath, angle * r, 0f, paint)
     }
 
     private fun trim(s: String) = if (s.length > 10) s.take(9) + "…" else s
+
+    private companion object {
+        /** Shared by all edges; only one pie is open at a time. */
+        val infoExecutor: ExecutorService = Executors.newSingleThreadExecutor { r ->
+            Thread(r, "pie-ring-info").apply { isDaemon = true }
+        }
+    }
 
     private fun sliceAt(x: Float, y: Float): Int {
         if (items.isEmpty()) return -1

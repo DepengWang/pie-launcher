@@ -20,21 +20,21 @@ import com.kj2431.pielauncher.prefs.Prefs
 class PieAccessibilityService : AccessibilityService() {
 
     private var overlay: PieOverlay? = null
-    private var orientation = Configuration.ORIENTATION_UNDEFINED
+    private var layoutKey = ""
     private val onSettingsChanged: () -> Unit = { refreshOverlay() }
 
     override fun onServiceConnected() {
         instance = this
-        orientation = resources.configuration.orientation
+        layoutKey = PieOverlay.layoutKey(resources.configuration)
         refreshOverlay()
         OverlaySettings.register(this, onSettingsChanged)
     }
-    /** Strip size and position depend on the current edge lengths; re-lay them out on rotation. */
+    /** Strips depend on the edge lengths and slice labels on the language; rebuild when either changes. */
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        if (newConfig.orientation != orientation) {
-            orientation = newConfig.orientation
-            refreshOverlay()
+        if (PieOverlay.layoutKey(newConfig) != layoutKey) {
+            layoutKey = PieOverlay.layoutKey(newConfig)
+            overlay?.relayout()
         }
     }
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {}

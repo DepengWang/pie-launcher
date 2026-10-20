@@ -183,4 +183,143 @@
         <item>overlay</item>
         <item>accessibility</item>
     </string-array>
+    <string name="pref_language_title">Language</string>
+    <!-- Each language is named in itself, so it can be found whatever the current language. -->
+    <string-array name="language_entries">
+        <item>System default</item>
+        <item>简体中文</item>
+        <item>English</item>
+    </string-array>
+    <string-array name="language_values" translatable="false">
+        <item>system</item>
+        <item>zh-CN</item>
+        <item>en</item>
+    </string-array>
+    <string name="cat_backup">Backup &amp; restore</string>
+    <string name="pref_export_title">Export settings</string>
+    <string name="pref_export_summary">Save all settings and pie slices to a JSON file.</string>
+    <string name="pref_import_title">Import settings</string>
+    <string name="pref_import_summary">Replace the current settings with a previously exported file.</string>
+    <string name="backup_import_confirm">All current settings and pie slices will be replaced by the ones in this file. Apps that aren\'t installed are skipped. Permissions and whether the launcher is running are not changed.</string>
+    <string name="backup_import_action">Import</string>
+    <string name="backup_exported">Exported %d settings</string>
+    <string name="backup_export_failed">Export failed: %s</string>
+    <string name="backup_imported">Imported %d settings</string>
+    <string name="backup_import_failed">Import failed: %s</string>
+    <string name="backup_invalid">This is not a Pie Launcher settings file</string>
+    <string name="backup_too_new">This file comes from a newer version of Pie Launcher; please update first</string>
+    <string name="pref_hide_landscape_title">Hide in landscape</string>
+    <string name="pref_hide_landscape_summary">Remove the activation strips while the screen is landscape (games, videos).</string>
+
+    <!-- Main screen status -->
+    <string name="status_overlay">Overlay permission: %s</string>
+    <string name="status_granted">granted</string>
+    <string name="status_not_granted">NOT granted</string>
+    <string name="status_service">Service: %s</string>
+    <string name="status_running">running</string>
+    <string name="status_stopped">stopped</string>
+    <string name="status_window_mode">Window mode: %s</string>
+    <string name="status_mode_overlay">normal overlay</string>
+    <string name="status_mode_accessibility">accessibility overlay</string>
+    <string name="status_accessibility">Accessibility service: %s</string>
+    <string name="status_connected">connected</string>
+    <string name="status_not_connected">NOT connected (edges hidden)</string>
+    <string name="status_edges">Edges: %1$s | %2$ddp | center %3$d%%</string>
+
+    <!-- Ring info -->
+    <string name="ring_battery">Battery %s</string>
+    <string name="ring_ringer">Ringer</string>
+    <string name="ring_ringer_silent">Ringer | silent</string>
+    <string name="ring_ringer_vibrate">Ringer | vibrate</string>
+    <string name="ring_ringer_volume">Ringer | %d</string>
+    <string name="ring_not_connected">Not connected</string>
+    <string name="ring_connected">Connected</string>
+    <string name="ring_connected_via">Connected | %s</string>
+    <string name="ring_notif_grant">Notifications: grant access</string>
+    <string name="ring_notif_none">No notifications</string>
+    <plurals name="ring_notif_count">
+        <item quantity="one">%d notification</item>
+        <item quantity="other">%d notifications</item>
+    </plurals>
+    <string name="ring_cpu_cores">Core %s active</string>
+    <string name="ring_memory">Used %1$s | Free %2$s</string>
+
+    <!-- Commands -->
+    <string name="action_unavailable">%s: no available method (enable root or accessibility)</string>
+    <string name="mech_none">plain</string>
+    <string name="mech_accessibility">accessibility</string>
+    <string name="mech_root">root</string>
+    <string name="act_home">Home</string>
+    <string name="act_home_desc">Trigger home key</string>
+    <string name="act_home_long">Home (long)</string>
+    <string name="act_home_long_desc">Longpress home key</string>
+    <string name="act_menu">Menu</string>
+    <string name="act_menu_desc">Trigger menu key</string>
+    <string name="act_menu_long">Menu (long)</string>
+    <string name="act_menu_long_desc">Longpress menu key</string>
+    <string name="act_back">Back</string>
+    <string name="act_back_desc">Trigger back key</string>
+    <string name="act_back_long">Back (long)</string>
+    <string name="act_back_long_desc">Longpress back key</string>
+    <string name="act_recents">Recents</string>
+    <string name="act_recents_desc">Trigger recent apps</string>
+    <string name="act_search">Search</string>
+    <string name="act_search_desc">Activate search</string>
+    <string name="act_voice_search">Voice search</string>
+    <string name="act_voice_search_desc">Activate voice search</string>
+    <string name="act_next_app">Next app</string>
+    <string name="act_next_app_desc">Switch to the least recent app; repeat to cycle through all</string>
+    <string name="act_prev_app">Prev app</string>
+    <string name="act_prev_app_desc">Switch to the previous app</string>
+    <string name="act_last_app">Last app</string>
+    <string name="act_last_app_desc">Switch to the last used app</string>
+    <string name="act_notifications">Notifications</string>
+    <string name="act_notifications_desc">Open the notification bar</string>
+    <string name="act_quick_settings">Quick settings</string>
+    <string name="act_quick_settings_desc">Open the quick settings</string>
+    <string name="act_keyboard">Keyboard</string>
+    <string name="act_keyboard_desc">Open the keyboard</string>
+    <string name="act_power_menu">Power menu</string>
+    <string name="act_power_menu_desc">Open the power menu</string>
+    <string name="act_lock_screen">Lock screen</string>
+    <string name="act_lock_screen_desc">Lock the screen</string>
+    <string name="act_wifi">Wi-Fi</string>
+    <string name="act_wifi_desc">Toggle Wi-Fi</string>
+    <string name="act_data">Mobile data</string>
+    <string name="act_data_desc">Toggle mobile data</string>
+    <string name="act_bluetooth">Bluetooth</string>
+    <string name="act_bluetooth_desc">Toggle Bluetooth</string>
+    <string name="act_location">Location</string>
+    <string name="act_location_desc">Toggle location</string>
+    <string name="act_immersive">Immersive</string>
+    <string name="act_immersive_desc">Toggle immersive mode</string>
+    <string name="act_key">Key</string>
+    <string name="act_key_desc">Trigger an arbitrary keycode</string>
+    <string name="act_key_hint">keycode (e.g. 26)</string>
+    <string name="act_activity">Activity</string>
+    <string name="act_activity_desc">Start an activity component</string>
+    <string name="act_activity_hint">pkg/.Activity</string>
+    <string name="act_webpage">Webpage</string>
+    <string name="act_webpage_desc">Open a URL</string>
+    <string name="act_webpage_hint">https://…</string>
+    <string name="act_script">Script</string>
+    <string name="act_script_desc">Run a shell script</string>
+    <string name="act_script_hint">shell command</string>
+    <string name="act_kill_app">Kill app</string>
+    <string name="act_kill_app_desc">Force-stop foreground app + home</string>
+    <string name="act_kill_all">Kill all</string>
+    <string name="act_kill_all_desc">Kill background apps</string>
+    <string name="act_tasker">Tasker task</string>
+    <string name="act_tasker_desc">Run a Tasker task</string>
+    <string name="act_tasker_hint">task name</string>
+    <string name="act_screenshot">Screenshot</string>
+    <string name="act_screenshot_desc">Take a screenshot</string>
+    <string name="act_unpin">Unpin</string>
+    <string name="act_unpin_desc">Exit screen pinning (approx.)</string>
+    <string name="act_assistant">Assistant</string>
+    <string name="act_assistant_desc">Activate the assistant</string>
+    <string name="act_split_screen">Split screen</string>
+    <string name="act_split_screen_desc">Toggle split screen</string>
+    <string name="act_float_window">Floating window</string>
+    <string name="act_float_window_desc">Float the foreground app, or maximise a floating window</string>
 </resources>

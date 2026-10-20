@@ -55,10 +55,53 @@ redistributed.
   reused, so the superuser manager doesn't prompt on every command.
 - Optional **AccessibilityService** for non-root global actions, and a boot
   receiver to restart the service after reboot.
+- **Language**: follow the system, or pick 简体中文 / English per app (also
+  available in Android 13+ system app-language settings).
+- **Backup & restore**: export all settings and slices to a JSON file and
+  import them back (on the same or another device).
+- **Hide in landscape**: optionally remove the activation strips while the
+  screen is landscape (games, videos).
+
+## Changelog（本 fork 的修改记录）
+
+### 2026-10-20
+
+**显示与适配**
+- 触发条长度改为按竖屏时的边长计算：顶部/底部用屏幕短边，左右用长边。横屏时底部触发条不再变宽。
+- 触发条和展开后的扇形窗口允许覆盖摄像头挖孔区域，修复横屏时左侧触发条不贴边（被挖孔推开 136px）的问题。
+- 屏幕旋转或语言变化时自动重建触发条；如果扇形正打开着，会等手势结束后再重建。
+- 在边缘两端按下时，圆心自动向内移动，保证整个扇形都在屏幕内。
+- 新增「横屏时隐藏」开关。
+
+**稳定性与流畅度**
+- root 命令超过 15 秒（root 授权弹窗 30 秒）会结束当前 shell 并在下次自动重开，不会再因为一个卡住的脚本导致所有动作失效。
+- 无障碍动作和普通动作直接执行，不再和 root 命令排队。
+- 切片的名称和图标在创建触发条时就准备好，应用安装、更新或卸载时自动刷新，按下时不再查询 PackageManager。
+- 圆环信息（电量、CPU、内存、网络、通知）改到后台线程收集，时钟仍然立即显示。
+- 绘制时复用 `Path` / `RectF`，动画期间不再每帧新建对象。
+
+**功能**
+- 「最近应用 / 上一个应用 / 下一个应用」：有 root 时读取最近任务列表，直接切换到目标应用（跳过桌面、当前应用和其他用户的应用分身）；没有 root 时退回到“连按两次多任务键”。「下一个应用」会切到最久没用的应用，连续使用可以依次轮换。
+- 简体中文翻译；所有写死在代码里的文字都改为字符串资源。
+- 设置中可指定语言：跟随系统 / 简体中文 / English。
+- 配置导入导出（设置 →「备份与恢复」），使用系统文件选择器，不需要存储权限。不会导出“服务是否启动”，导入前会先确认。
+
+**构建**
+- release 构建开启 R8 代码和资源压缩（APK 约 6.1 MB → 1.9 MB）。崩溃堆栈需要用 `app/build/outputs/mapping/release/mapping.txt` 还原。
+- 构建需要 JDK 17–21（Gradle 8.9 不支持 JDK 25）。
+- 用 debug 密钥签名 release 版，可以覆盖安装 debug 版而不丢数据：
+
+  ```bash
+  ./gradlew assembleRelease \
+    -Pandroid.injected.signing.store.file=$HOME/.android/debug.keystore \
+    -Pandroid.injected.signing.store.password=android \
+    -Pandroid.injected.signing.key.alias=androiddebugkey \
+    -Pandroid.injected.signing.key.password=android
+  ```
 
 ## Build
 
-Requires JDK 17 and the Android SDK (compile SDK 35).
+Requires JDK 17–21 (Gradle 8.9 rejects JDK 25) and the Android SDK (compile SDK 35).
 
 ```bash
 # Debug
@@ -119,8 +162,9 @@ app/src/main/java/com/kj2431/pielauncher/
   action/    action catalog + runner (none / accessibility / root)
   root/      RootHelper (single persistent su shell)
   model/     PieItem, AppInfo
-  prefs/     Prefs (SharedPreferences source of truth)
-  ui/        edge-to-edge + theme helpers
+  prefs/     Prefs (SharedPreferences source of truth), ConfigBackup (JSON import/export)
+  info/      RingInfo (clock + status lines around the open pie)
+  ui/        edge-to-edge, theme and language helpers
   *Activity  control surface, settings, PIE/app/command pickers
 ```
 

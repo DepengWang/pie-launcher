@@ -58,14 +58,18 @@ class MainActivity : AppCompatActivity() {
         val overlay = canDrawOverlays()
         val a11yMode = accessibilityMode()
         val on = Prefs.serviceEnabled(this) && (a11yMode || overlay)
+        val edgeNames = resources.getStringArray(R.array.edge_entries)
+        val edges = Prefs.edges(this).joinToString { edgeNames[it.ordinal] }
         status.text = buildString {
-            appendLine("Overlay permission: ${if (overlay) "granted" else "NOT granted"}")
-            appendLine("Service: ${if (on) "running" else "stopped"}")
-            appendLine("Window mode: ${if (a11yMode) "accessibility overlay" else "normal overlay"}")
-            if (a11yMode) appendLine("Accessibility service: " +
-                if (PieAccessibilityService.isAvailable) "connected" else "NOT connected (edges hidden)")
-            append("Edges: ${Prefs.edges(this@MainActivity).joinToString { it.key }}  ")
-            append("| ${Prefs.thicknessDp(this@MainActivity)}dp | center ${Prefs.centerPercent(this@MainActivity)}%")
+            appendLine(getString(R.string.status_overlay,
+                getString(if (overlay) R.string.status_granted else R.string.status_not_granted)))
+            appendLine(getString(R.string.status_service,
+                getString(if (on) R.string.status_running else R.string.status_stopped)))
+            appendLine(getString(R.string.status_window_mode,
+                getString(if (a11yMode) R.string.status_mode_accessibility else R.string.status_mode_overlay)))
+            if (a11yMode) appendLine(getString(R.string.status_accessibility,
+                getString(if (PieAccessibilityService.isAvailable) R.string.status_connected else R.string.status_not_connected)))
+            append(getString(R.string.status_edges, edges, Prefs.thicknessDp(this@MainActivity), Prefs.centerPercent(this@MainActivity)))
         }
         toggle.text = if (on) getString(R.string.stop) else getString(R.string.start)
     }

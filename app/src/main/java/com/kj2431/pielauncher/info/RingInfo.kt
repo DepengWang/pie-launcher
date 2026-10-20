@@ -8,6 +8,7 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.BatteryManager
 import android.text.format.DateFormat
+import com.kj2431.pielauncher.R
 import com.kj2431.pielauncher.service.PieNotificationListener
 import java.io.File
 import java.util.Calendar
@@ -42,7 +43,7 @@ object RingInfo {
     /** Lines of one page, outermost first. */
     fun overview(ctx: Context): List<String> = listOf(date(ctx), battery(ctx) + " | " + ringer(ctx), network(ctx))
 
-    fun system(ctx: Context): List<String> = listOfNotNull(notifications(), cpu(), memory(ctx))
+    fun system(ctx: Context): List<String> = listOfNotNull(notifications(ctx), cpu(ctx), memory(ctx))
 
     /**
      * One page per recent notification: time, app, title + text (LMT style,
@@ -74,61 +75,61 @@ object RingInfo {
     private fun battery(ctx: Context): String {
         val bm = ctx.getSystemService(Context.BATTERY_SERVICE) as BatteryManager
         val pct = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
-        return "Battery " + (if (pct < 0) "?" else "$pct%") + if (bm.isCharging) " ⚡" else ""
+        return ctx.getString(R.string.ring_battery, if (pct < 0) "?" else "$pct%") + if (bm.isCharging) " ⚡" else ""
     }
 
     private fun ringer(ctx: Context): String {
-        val am = ctx.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return "Ringer"
+        val am = ctx.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+            ?: return ctx.getString(R.string.ring_ringer)
         return when (am.ringerMode) {
-            AudioManager.RINGER_MODE_SILENT -> "Ringer | silent"
-            AudioManager.RINGER_MODE_VIBRATE -> "Ringer | vibrate"
-            else -> "Ringer | " + am.getStreamVolume(AudioManager.STREAM_RING)
+            AudioManager.RINGER_MODE_SILENT -> ctx.getString(R.string.ring_ringer_silent)
+            AudioManager.RINGER_MODE_VIBRATE -> ctx.getString(R.string.ring_ringer_vibrate)
+            else -> ctx.getString(R.string.ring_ringer_volume, am.getStreamVolume(AudioManager.STREAM_RING))
         }
     }
 
     /** "Connected | WIFI | -46 dBm". Looks through a VPN to the network it rides on. */
     private fun network(ctx: Context): String {
-        val cm = ctx.getSystemService(ConnectivityManager::class.java) ?: return "Not connected"
-        val active = cm.activeNetwork?.let { cm.getNetworkCapabilities(it) } ?: return "Not connected"
+        val notConnected = ctx.getString(R.string.ring_not_connected)
+        val cm = ctx.getSystemService(ConnectivityManager::class.java) ?: return notConnected
+        val active = cm.activeNetwork?.let { cm.getNetworkCapabilities(it) } ?: return notConnected
         @Suppress("DEPRECATION")
         val caps = if (!active.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) active
             else cm.allNetworks.mapNotNull { cm.getNetworkCapabilities(it) }.firstOrNull {
                 !it.hasTransport(NetworkCapabilities.TRANSPORT_VPN) &&
                     it.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
             } ?: active
+        fun via(type: String) = ctx.getString(R.string.ring_connected_via, type)
         return when {
-            caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "Connected | WIFI" +
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> via("WIFI") +
                 caps.signalStrength.takeIf { it != NetworkCapabilities.SIGNAL_STRENGTH_UNSPECIFIED }
                     ?.let { " | $it dBm" }.orEmpty()
-            caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "Connected | MOBILE"
-            caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "Connected | ETHERNET"
-            else -> "Connected"
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> via("MOBILE")
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> via("ETHERNET")
+            else -> ctx.getString(R.string.ring_connected)
         }
     }
 
     /** Count from [PieNotificationListener]; it only ever stores a number. */
-    private fun notifications(): String {
-        val n = PieNotificationListener.count ?: return "Notifications: grant access"
-        return when (n) {
-            0 -> "No notifications"
-            1 -> "1 notification"
-            else -> "$n notifications"
-        }
+    private fun notifications(ctx: Context): String {
+        val n = PieNotificationListener.count ?: return ctx.getString(R.string.ring_notif_grant)
+        return if (n == 0) ctx.getString(R.string.ring_notif_none)
+            else ctx.resources.getQuantityString(R.plurals.ring_notif_count, n, n)
     }
 
     /** Highest current core frequency plus the online core range, e.g. "1958MHz | Core 0-7 active". */
-    private fun cpu(): String? {
+    private fun cpu(ctx: Context): String? {
         val online = readFile("/sys/devices/system/cpu/online") ?: return null
         val maxKHz = onlineCores(online).mapNotNull { core ->
             readFile("/sys/devices/system/cpu/cpu$core/cpufreq/scaling_cur_freq")?.toLongOrNull()
         }.maxOrNull()
-        return (maxKHz?.let { "${it / 1000}MHz | " } ?: "") + "Core $online active"
+        return (maxKHz?.let { "${it / 1000}MHz | " } ?: "") + ctx.getString(R.string.ring_cpu_cores, online)
     }
 
     private fun memory(ctx: Context): String {
         val am = ctx.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         val mi = ActivityManager.MemoryInfo().also { am.getMemoryInfo(it) }
-        return "Used ${gb(mi.totalMem - mi.availMem)} | Free ${gb(mi.availMem)}"
+        return ctx.getString(R.string.ring_memory, gb(mi.totalMem - mi.availMem), gb(mi.availMem))
     }
 
     private fun gb(bytes: Long) = String.format(Locale.US, "%.1f GB", bytes / 1_073_741_824.0)

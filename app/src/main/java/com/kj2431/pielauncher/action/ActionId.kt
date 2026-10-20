@@ -1,6 +1,7 @@
 package com.kj2431.pielauncher.action
 
 import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
 import com.kj2431.pielauncher.R
 
 /** Which underlying mechanism can satisfy an action. Tried in list order. */
@@ -15,55 +16,56 @@ enum class Mechanism { NONE, ACCESSIBILITY, ROOT }
  * [iconRes] is a Material-style vector glyph shown on the pie slice.
  */
 enum class ActionId(
-    val label: String,
-    val description: String,
+    @StringRes val label: Int,
+    @StringRes val description: Int,
     val mechanisms: List<Mechanism>,
     @DrawableRes val iconRes: Int,
-    val argHint: String? = null
+    @StringRes val argHint: Int? = null
 ) {
     // ---- Navigation keys ----
-    HOME("Home", "Trigger home key", listOf(Mechanism.ACCESSIBILITY, Mechanism.ROOT, Mechanism.NONE), R.drawable.ic_home),
-    HOME_LONG("Home (long)", "Longpress home key", listOf(Mechanism.ROOT), R.drawable.ic_home),
-    MENU("Menu", "Trigger menu key", listOf(Mechanism.ROOT), R.drawable.ic_menu),
-    MENU_LONG("Menu (long)", "Longpress menu key", listOf(Mechanism.ROOT), R.drawable.ic_menu),
-    BACK("Back", "Trigger back key", listOf(Mechanism.ACCESSIBILITY, Mechanism.ROOT), R.drawable.ic_arrow_back),
-    BACK_LONG("Back (long)", "Longpress back key", listOf(Mechanism.ROOT), R.drawable.ic_arrow_back),
-    RECENTS("Recents", "Trigger recent apps", listOf(Mechanism.ACCESSIBILITY, Mechanism.ROOT), R.drawable.ic_recents),
-    SEARCH("Search", "Activate search", listOf(Mechanism.ROOT, Mechanism.NONE), R.drawable.ic_search),
-    VOICE_SEARCH("Voice search", "Activate voice search", listOf(Mechanism.NONE), R.drawable.ic_mic),
+    HOME(R.string.act_home, R.string.act_home_desc, listOf(Mechanism.ACCESSIBILITY, Mechanism.ROOT, Mechanism.NONE), R.drawable.ic_home),
+    HOME_LONG(R.string.act_home_long, R.string.act_home_long_desc, listOf(Mechanism.ROOT), R.drawable.ic_home),
+    MENU(R.string.act_menu, R.string.act_menu_desc, listOf(Mechanism.ROOT), R.drawable.ic_menu),
+    MENU_LONG(R.string.act_menu_long, R.string.act_menu_long_desc, listOf(Mechanism.ROOT), R.drawable.ic_menu),
+    BACK(R.string.act_back, R.string.act_back_desc, listOf(Mechanism.ACCESSIBILITY, Mechanism.ROOT), R.drawable.ic_arrow_back),
+    BACK_LONG(R.string.act_back_long, R.string.act_back_long_desc, listOf(Mechanism.ROOT), R.drawable.ic_arrow_back),
+    RECENTS(R.string.act_recents, R.string.act_recents_desc, listOf(Mechanism.ACCESSIBILITY, Mechanism.ROOT), R.drawable.ic_recents),
+    SEARCH(R.string.act_search, R.string.act_search_desc, listOf(Mechanism.ROOT, Mechanism.NONE), R.drawable.ic_search),
+    VOICE_SEARCH(R.string.act_voice_search, R.string.act_voice_search_desc, listOf(Mechanism.NONE), R.drawable.ic_mic),
 
     // ---- App switching ----
-    NEXT_APP("Next app", "Switch to next active app (approx.)", listOf(Mechanism.ROOT), R.drawable.ic_arrow_forward),
-    PREV_APP("Prev app", "Switch to previous active app (approx.)", listOf(Mechanism.ROOT), R.drawable.ic_skip_previous),
-    LAST_APP("Last app", "Switch to last active app", listOf(Mechanism.ROOT), R.drawable.ic_history),
+    // Root reads the recent-task list; accessibility falls back to a double Recents press.
+    NEXT_APP(R.string.act_next_app, R.string.act_next_app_desc, listOf(Mechanism.ROOT, Mechanism.ACCESSIBILITY), R.drawable.ic_arrow_forward),
+    PREV_APP(R.string.act_prev_app, R.string.act_prev_app_desc, listOf(Mechanism.ROOT, Mechanism.ACCESSIBILITY), R.drawable.ic_skip_previous),
+    LAST_APP(R.string.act_last_app, R.string.act_last_app_desc, listOf(Mechanism.ROOT, Mechanism.ACCESSIBILITY), R.drawable.ic_history),
 
     // ---- System UI ----
-    NOTIFICATIONS("Notifications", "Open the notification bar", listOf(Mechanism.ACCESSIBILITY, Mechanism.ROOT), R.drawable.ic_notifications),
-    QUICK_SETTINGS("Quick settings", "Open the quick settings", listOf(Mechanism.ACCESSIBILITY, Mechanism.ROOT), R.drawable.ic_tune),
-    OPEN_KEYBOARD("Keyboard", "Open the keyboard", listOf(Mechanism.NONE), R.drawable.ic_keyboard),
-    POWER_MENU("Power menu", "Open the power menu", listOf(Mechanism.ACCESSIBILITY), R.drawable.ic_power),
-    LOCK_SCREEN("Lock screen", "Lock the screen", listOf(Mechanism.ACCESSIBILITY, Mechanism.ROOT), R.drawable.ic_lock),
+    NOTIFICATIONS(R.string.act_notifications, R.string.act_notifications_desc, listOf(Mechanism.ACCESSIBILITY, Mechanism.ROOT), R.drawable.ic_notifications),
+    QUICK_SETTINGS(R.string.act_quick_settings, R.string.act_quick_settings_desc, listOf(Mechanism.ACCESSIBILITY, Mechanism.ROOT), R.drawable.ic_tune),
+    OPEN_KEYBOARD(R.string.act_keyboard, R.string.act_keyboard_desc, listOf(Mechanism.NONE), R.drawable.ic_keyboard),
+    POWER_MENU(R.string.act_power_menu, R.string.act_power_menu_desc, listOf(Mechanism.ACCESSIBILITY), R.drawable.ic_power),
+    LOCK_SCREEN(R.string.act_lock_screen, R.string.act_lock_screen_desc, listOf(Mechanism.ACCESSIBILITY, Mechanism.ROOT), R.drawable.ic_lock),
 
     // ---- Toggles ----
-    WIFI("Wi-Fi", "Toggle Wi-Fi", listOf(Mechanism.ROOT, Mechanism.NONE), R.drawable.ic_wifi),
-    DATA("Mobile data", "Toggle mobile data", listOf(Mechanism.ROOT), R.drawable.ic_data),
-    BLUETOOTH("Bluetooth", "Toggle Bluetooth", listOf(Mechanism.ROOT, Mechanism.NONE), R.drawable.ic_bluetooth),
-    GPS("Location", "Toggle location", listOf(Mechanism.ROOT, Mechanism.NONE), R.drawable.ic_location),
-    IMMERSIVE("Immersive", "Toggle immersive mode", listOf(Mechanism.ROOT), R.drawable.ic_fullscreen),
+    WIFI(R.string.act_wifi, R.string.act_wifi_desc, listOf(Mechanism.ROOT, Mechanism.NONE), R.drawable.ic_wifi),
+    DATA(R.string.act_data, R.string.act_data_desc, listOf(Mechanism.ROOT), R.drawable.ic_data),
+    BLUETOOTH(R.string.act_bluetooth, R.string.act_bluetooth_desc, listOf(Mechanism.ROOT, Mechanism.NONE), R.drawable.ic_bluetooth),
+    GPS(R.string.act_location, R.string.act_location_desc, listOf(Mechanism.ROOT, Mechanism.NONE), R.drawable.ic_location),
+    IMMERSIVE(R.string.act_immersive, R.string.act_immersive_desc, listOf(Mechanism.ROOT), R.drawable.ic_fullscreen),
 
     // ---- Advanced ----
-    KEY("Key", "Trigger an arbitrary keycode", listOf(Mechanism.ROOT), R.drawable.ic_key, argHint = "keycode (e.g. 26)"),
-    ACTIVITY("Activity", "Start an activity component", listOf(Mechanism.ROOT, Mechanism.NONE), R.drawable.ic_open_in_new, argHint = "pkg/.Activity"),
-    WEBPAGE("Webpage", "Open a URL", listOf(Mechanism.NONE), R.drawable.ic_public, argHint = "https://…"),
-    SCRIPT("Script", "Run a shell script", listOf(Mechanism.ROOT), R.drawable.ic_terminal, argHint = "shell command"),
-    KILL_APP("Kill app", "Force-stop foreground app + home", listOf(Mechanism.ROOT), R.drawable.ic_close),
-    KILL_ALL("Kill all", "Kill background apps", listOf(Mechanism.ROOT), R.drawable.ic_clear_all),
-    TASKER("Tasker task", "Run a Tasker task", listOf(Mechanism.NONE), R.drawable.ic_bolt, argHint = "task name"),
-    SCREENSHOT("Screenshot", "Take a screenshot", listOf(Mechanism.ACCESSIBILITY, Mechanism.ROOT), R.drawable.ic_image),
-    UNPIN("Unpin", "Exit screen pinning (approx.)", listOf(Mechanism.ROOT), R.drawable.ic_pin),
-    ASSISTANT("Assistant", "Activate the assistant", listOf(Mechanism.NONE), R.drawable.ic_assistant),
-    SPLIT_SCREEN("Split screen", "Toggle split screen", listOf(Mechanism.ROOT, Mechanism.ACCESSIBILITY), R.drawable.ic_splitscreen),
-    FLOAT_WINDOW("Floating window", "Float the foreground app, or maximise a floating window", listOf(Mechanism.ROOT), R.drawable.ic_float_window);
+    KEY(R.string.act_key, R.string.act_key_desc, listOf(Mechanism.ROOT), R.drawable.ic_key, argHint = R.string.act_key_hint),
+    ACTIVITY(R.string.act_activity, R.string.act_activity_desc, listOf(Mechanism.ROOT, Mechanism.NONE), R.drawable.ic_open_in_new, argHint = R.string.act_activity_hint),
+    WEBPAGE(R.string.act_webpage, R.string.act_webpage_desc, listOf(Mechanism.NONE), R.drawable.ic_public, argHint = R.string.act_webpage_hint),
+    SCRIPT(R.string.act_script, R.string.act_script_desc, listOf(Mechanism.ROOT), R.drawable.ic_terminal, argHint = R.string.act_script_hint),
+    KILL_APP(R.string.act_kill_app, R.string.act_kill_app_desc, listOf(Mechanism.ROOT), R.drawable.ic_close),
+    KILL_ALL(R.string.act_kill_all, R.string.act_kill_all_desc, listOf(Mechanism.ROOT), R.drawable.ic_clear_all),
+    TASKER(R.string.act_tasker, R.string.act_tasker_desc, listOf(Mechanism.NONE), R.drawable.ic_bolt, argHint = R.string.act_tasker_hint),
+    SCREENSHOT(R.string.act_screenshot, R.string.act_screenshot_desc, listOf(Mechanism.ACCESSIBILITY, Mechanism.ROOT), R.drawable.ic_image),
+    UNPIN(R.string.act_unpin, R.string.act_unpin_desc, listOf(Mechanism.ROOT), R.drawable.ic_pin),
+    ASSISTANT(R.string.act_assistant, R.string.act_assistant_desc, listOf(Mechanism.NONE), R.drawable.ic_assistant),
+    SPLIT_SCREEN(R.string.act_split_screen, R.string.act_split_screen_desc, listOf(Mechanism.ROOT, Mechanism.ACCESSIBILITY), R.drawable.ic_splitscreen),
+    FLOAT_WINDOW(R.string.act_float_window, R.string.act_float_window_desc, listOf(Mechanism.ROOT), R.drawable.ic_float_window);
 
     val needsArg: Boolean get() = argHint != null
 }
