@@ -43,6 +43,7 @@ class PieOverlay(private val ctx: Context, private val windowType: Int) {
         val lengthFrac = Prefs.lengthPercent(ctx) / 100f
         val centerFrac = Prefs.centerPercent(ctx) / 100f
         val pieColors = resolveColors()
+        val (screenW, screenH) = screenSize()
 
         Prefs.edges(ctx).forEach { edge ->
             lateinit var view: PieEdgeView
@@ -75,9 +76,14 @@ class PieOverlay(private val ctx: Context, private val windowType: Int) {
             )
 
             val vertical = edge == Prefs.Edge.LEFT || edge == Prefs.Edge.RIGHT
-            // Size = length% of the edge; centred at centerFrac of the edge.
-            val edgeLen = if (vertical) metrics.heightPixels else metrics.widthPixels
-            val sizePx = (edgeLen * lengthFrac).toInt().coerceAtLeast(thicknessPx)
+            // Size = length% of the edge as measured in portrait (top/bottom use the
+            // short side, left/right the long side), so rotating doesn't stretch the
+            // strip; centred at centerFrac of the edge as it is now.
+            val edgeLen = if (vertical) screenH else screenW
+            val shortSide = minOf(screenW, screenH)
+            val longSide = maxOf(screenW, screenH)
+            val baseLen = if (vertical) longSide else shortSide
+            val sizePx = (baseLen * lengthFrac).toInt().coerceIn(thicknessPx, edgeLen)
             val offset = (edgeLen * centerFrac - sizePx / 2f).toInt().coerceIn(0, edgeLen - sizePx)
 
             val lp = WindowManager.LayoutParams(
@@ -85,9 +91,11 @@ class PieOverlay(private val ctx: Context, private val windowType: Int) {
                 if (vertical) sizePx else thicknessPx,
                 windowType,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                     WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or imeFlag(),
                 PixelFormat.TRANSLUCENT
             ).apply {
+                applyCutoutMode()
                 gravity = edgeGravity(edge) or (if (vertical) Gravity.TOP else Gravity.START)
                 if (vertical) y = offset else x = offset
             }
@@ -111,7 +119,10 @@ class PieOverlay(private val ctx: Context, private val windowType: Int) {
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or imeFlag(),
             PixelFormat.TRANSLUCENT
-        ).apply { gravity = Gravity.TOP or Gravity.START; x = 0; y = 0 }
+        ).apply {
+            applyCutoutMode()
+            gravity = Gravity.TOP or Gravity.START; x = 0; y = 0
+        }
         runCatching { wm.updateViewLayout(view, full) }
     }
 
@@ -217,6 +228,26 @@ class PieOverlay(private val ctx: Context, private val windowType: Int) {
      * non-focusable window's relationship to the IME so it sits BEHIND the
      * keyboard instead of in front of it.
      */
+    /** Full physical screen in the current rotation, cutout and system bars included. */
+    private fun screenSize(): Pair<Int, Int> =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            wm.maximumWindowMetrics.bounds.let { it.width() to it.height() }
+        } else {
+            DisplayMetrics().also { @Suppress("DEPRECATION") wm.defaultDisplay.getRealMetrics(it) }
+                .let { it.widthPixels to it.heightPixels }
+        }
+
+    /**
+     * Lay out over the camera cutout too. Otherwise the window is pushed off the
+     * cutout side (left/right in landscape), leaving a gap between strip and edge.
+     */
+    private fun WindowManager.LayoutParams.applyCutoutMode() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+            layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+        else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
+            layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+    }
+
     private fun imeFlag(): Int =
         if (Prefs.belowKeyboard(ctx)) WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM else 0
 

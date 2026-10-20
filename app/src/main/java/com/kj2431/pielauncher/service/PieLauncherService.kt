@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.os.Build
 import android.os.IBinder
 import android.view.WindowManager
@@ -22,6 +23,7 @@ class PieLauncherService : Service() {
 
     /** Only used in normal overlay mode; accessibility mode lives in [PieAccessibilityService]. */
     private var overlay: PieOverlay? = null
+    private var orientation = Configuration.ORIENTATION_UNDEFINED
 
     /**
      * Rebuilds this service's own edges as soon as a setting changes, so edits
@@ -37,10 +39,20 @@ class PieLauncherService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        orientation = resources.configuration.orientation
         startInForeground()
         applyWindowMode()
         if (Prefs.rootActionsEnabled(this)) RootHelper.prewarm()
         OverlaySettings.register(this, onSettingsChanged)
+    }
+
+    /** Strip size and position depend on the current edge lengths; re-lay them out on rotation. */
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        if (newConfig.orientation != orientation) {
+            orientation = newConfig.orientation
+            rebuildOwnEdges()
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

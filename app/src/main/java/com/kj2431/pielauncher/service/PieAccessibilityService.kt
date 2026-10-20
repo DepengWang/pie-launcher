@@ -1,6 +1,7 @@
 package com.kj2431.pielauncher.service
 
 import android.accessibilityservice.AccessibilityService
+import android.content.res.Configuration
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import com.kj2431.pielauncher.prefs.Prefs
@@ -19,12 +20,22 @@ import com.kj2431.pielauncher.prefs.Prefs
 class PieAccessibilityService : AccessibilityService() {
 
     private var overlay: PieOverlay? = null
+    private var orientation = Configuration.ORIENTATION_UNDEFINED
     private val onSettingsChanged: () -> Unit = { refreshOverlay() }
 
     override fun onServiceConnected() {
         instance = this
+        orientation = resources.configuration.orientation
         refreshOverlay()
         OverlaySettings.register(this, onSettingsChanged)
+    }
+    /** Strip size and position depend on the current edge lengths; re-lay them out on rotation. */
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        if (newConfig.orientation != orientation) {
+            orientation = newConfig.orientation
+            refreshOverlay()
+        }
     }
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
     override fun onInterrupt() {}
