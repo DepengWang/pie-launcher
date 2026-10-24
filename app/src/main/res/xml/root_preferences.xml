@@ -278,6 +278,13 @@
             app:summary="@string/pref_accessibility_summary">
             <intent android:action="android.settings.ACCESSIBILITY_SETTINGS" />
         </Preference>
+
+        <SwitchPreferenceCompat
+            app:key="pref_keep_accessibility"
+            app:iconSpaceReserved="false"
+            app:title="@string/pref_keep_a11y_title"
+            app:summary="@string/pref_keep_a11y_summary"
+            app:defaultValue="false" />
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/cat_backup" app:iconSpaceReserved="false">

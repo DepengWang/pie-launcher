@@ -263,4 +263,13 @@
     <string name="act_split_screen_desc">开关分屏</string>
     <string name="act_float_window">浮窗</string>
     <string name="act_float_window_desc">让前台应用变为浮窗，或将浮窗最大化</string>
+    <string name="pref_keep_a11y_title">保持无障碍开启</string>
+    <string name="pref_keep_a11y_summary">系统关闭无障碍服务后自动重新开启。需要 root，或用 adb 授权一次。如果想自己关闭无障碍，请先关掉这个开关。</string>
+    <string name="a11y_guard_on">无障碍服务已开启，之后会保持开启</string>
+    <string name="a11y_guard_need_grant_title">需要授权</string>
+    <string name="a11y_guard_need_grant_msg">无法获取 root。请把手机连接电脑，运行一次下面的命令，然后重新打开这个开关。ColorOS / OxygenOS 需要先在开发者选项里打开「禁止权限监控」，MIUI / HyperOS 需要打开「USB 调试（安全设置）」。
+
+%1$s</string>
+    <string name="a11y_guard_copy">复制</string>
+    <string name="a11y_guard_copied">命令已复制</string>
 </resources>

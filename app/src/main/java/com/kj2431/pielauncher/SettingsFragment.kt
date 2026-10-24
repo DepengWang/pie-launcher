@@ -1,5 +1,7 @@
 package com.kj2431.pielauncher
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
@@ -10,11 +12,14 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
+import androidx.preference.SwitchPreferenceCompat
 import com.kj2431.pielauncher.prefs.ConfigBackup
 import com.kj2431.pielauncher.prefs.Prefs
+import com.kj2431.pielauncher.service.AccessibilityGuard
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.concurrent.thread
 import com.kj2431.pielauncher.ui.LanguageHelper
 import com.kj2431.pielauncher.ui.ThemeHelper
 
@@ -55,6 +60,13 @@ class SettingsFragment : PreferenceFragmentCompat() {
             true
         }
 
+        // Keep accessibility on: get WRITE_SECURE_SETTINGS (root, else ask for
+        // a one-time adb grant) and turn the service on right away.
+        findPreference<SwitchPreferenceCompat>(Prefs.KEY_KEEP_A11Y)?.setOnPreferenceChangeListener { pref, value ->
+            if (value == true) enableKeepAccessibility(pref as SwitchPreferenceCompat)
+            true
+        }
+
         // Language: show what is actually in effect (it may have been changed in
         // system settings), and apply a new choice right away; AppCompat
         // recreates the open screens itself.
@@ -66,6 +78,32 @@ class SettingsFragment : PreferenceFragmentCompat() {
                 true
             }
         }
+    }
+
+    private fun enableKeepAccessibility(pref: SwitchPreferenceCompat) {
+        val ctx = requireContext().applicationContext
+        thread(name = "a11y-grant") {
+            val ok = AccessibilityGuard.grantViaRoot(ctx) && AccessibilityGuard.enable(ctx)
+            activity?.runOnUiThread {
+                if (!isAdded) return@runOnUiThread
+                if (ok) Toast.makeText(ctx, R.string.a11y_guard_on, Toast.LENGTH_SHORT).show()
+                else { pref.isChecked = false; showGrantHelp() }
+            }
+        }
+    }
+
+    private fun showGrantHelp() {
+        val cmd = "adb shell " + AccessibilityGuard.grantCommand(requireContext())
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.a11y_guard_need_grant_title)
+            .setMessage(getString(R.string.a11y_guard_need_grant_msg, cmd))
+            .setPositiveButton(R.string.a11y_guard_copy) { _, _ ->
+                val cm = requireContext().getSystemService(ClipboardManager::class.java)
+                cm.setPrimaryClip(ClipData.newPlainText("adb", cmd))
+                Toast.makeText(requireContext(), R.string.a11y_guard_copied, Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     private fun exportTo(uri: Uri) {

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <!-- Android 11+ package visibility: see launchable apps for the picker -->
     <queries>
         <intent>
@@ -21,6 +22,10 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <!-- Ring info: connection type and Wi-Fi signal -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Optional: turn our accessibility service back on; granted via root or adb only -->
+    <uses-permission
+        android:name="android.permission.WRITE_SECURE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
 
     <application
         android:name=".PieApp"

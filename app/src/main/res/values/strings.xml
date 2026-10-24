@@ -322,4 +322,13 @@
     <string name="act_split_screen_desc">Toggle split screen</string>
     <string name="act_float_window">Floating window</string>
     <string name="act_float_window_desc">Float the foreground app, or maximise a floating window</string>
+    <string name="pref_keep_a11y_title">Keep accessibility on</string>
+    <string name="pref_keep_a11y_summary">Turn the accessibility service back on when the system switches it off. Needs root or a one-time adb grant. Turn this off first if you want to disable accessibility yourself.</string>
+    <string name="a11y_guard_on">Accessibility service is on and will be kept on</string>
+    <string name="a11y_guard_need_grant_title">Permission needed</string>
+    <string name="a11y_guard_need_grant_msg">Root is not available. Connect the phone to a computer and run this once, then turn the switch on again. On ColorOS/OxygenOS, first turn on \"Disable permission monitoring\" in Developer options; on MIUI/HyperOS, \"USB debugging (Security settings)\".
+
+%1$s</string>
+    <string name="a11y_guard_copy">Copy</string>
+    <string name="a11y_guard_copied">Command copied</string>
 </resources>

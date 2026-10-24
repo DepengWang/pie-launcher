@@ -59,10 +59,25 @@ redistributed.
   available in Android 13+ system app-language settings).
 - **Backup & restore**: export all settings and slices to a JSON file and
   import them back (on the same or another device).
+- **Keep accessibility on**: re-enable the accessibility service when the
+  system turns it off (needs a one-time root or adb grant of
+  `WRITE_SECURE_SETTINGS`).
 - **Hide in landscape**: optionally remove the activation strips while the
   screen is landscape (games, videos).
 
 ## Changelog（本 fork 的修改记录）
+
+### 2026-10-24
+
+- 新增「保持无障碍开启」开关（设置 → 行为）：无障碍服务被系统关闭（省电管理、一键清理、厂商安全策略）后自动重新开启，同时保留其他应用的无障碍服务。
+  - 打开开关时通过 root 授予一次 `WRITE_SECURE_SETTINGS`，之后不再需要 root；没有 root 时会弹出 adb 命令，可一键复制：`adb shell pm grant com.kj2431.pielauncher android.permission.WRITE_SECURE_SETTINGS`。
+  - 前台服务运行期间监听无障碍设置，被关闭约 1 秒后恢复；应用进程每次启动（打开应用、开机）时也会检查一次。
+  - ColorOS / OxygenOS 上用 adb 授权前，要先在开发者选项里打开「禁止权限监控」，否则 `pm grant` 会报 SecurityException；MIUI / HyperOS 对应「USB 调试（安全设置）」。
+  - 如果应用被「强行停止」，要等下次打开应用才能恢复。想手动关闭无障碍时，需要先关掉这个开关。
+- 新增诊断日志 `files/diag.log`（最多 300 行，用 root 读取：`su -c cat /data/data/com.kj2431.pielauncher/files/diag.log`），记录：
+  - 每次生成触发条时算出的屏幕尺寸，每条触发条的大小、屏幕上的实际位置和当时的屏幕旋转方向；
+  - 无障碍被系统关闭的时间和当时的横竖屏状态。
+  - 用于排查「触发条有时横过来出现在屏幕顶端和中间」的问题（尚未复现，待收集现场记录）。
 
 ### 2026-10-20
 

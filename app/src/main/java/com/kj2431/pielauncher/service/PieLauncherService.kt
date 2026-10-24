@@ -44,6 +44,7 @@ class PieLauncherService : Service() {
         applyWindowMode()
         if (Prefs.rootActionsEnabled(this)) RootHelper.prewarm()
         OverlaySettings.register(this, onSettingsChanged)
+        AccessibilityGuard.watch(this)
     }
 
     /** Strips depend on the edge lengths and slice labels on the language; rebuild when either changes. */
@@ -101,6 +102,7 @@ class PieLauncherService : Service() {
 
     override fun onDestroy() {
         OverlaySettings.unregister(onSettingsChanged)
+        AccessibilityGuard.unwatch(this)
         overlay?.removeEdges(); overlay = null
         PieAccessibilityService.instance?.refreshOverlay()
         RootHelper.shutdown()

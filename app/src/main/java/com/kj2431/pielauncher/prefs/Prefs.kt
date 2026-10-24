@@ -21,6 +21,7 @@ object Prefs {
     const val KEY_ROOT       = "pref_root_actions"
     const val KEY_SHOW_BARS  = "pref_show_bars"
     const val KEY_HIDE_LANDSCAPE = "pref_hide_landscape"
+    const val KEY_KEEP_A11Y  = "pref_keep_accessibility"
     const val KEY_LABEL_MODE = "pref_label_mode"   // both | icon | text
     const val KEY_RESPONSE   = "pref_response_ms"
     const val KEY_ANIM       = "pref_anim_ms"
@@ -76,6 +77,7 @@ object Prefs {
     fun rootActionsEnabled(ctx: Context): Boolean = sp(ctx).getBoolean(KEY_ROOT, false)
     fun showActivationBars(ctx: Context): Boolean = sp(ctx).getBoolean(KEY_SHOW_BARS, false)
     fun hideInLandscape(ctx: Context): Boolean = sp(ctx).getBoolean(KEY_HIDE_LANDSCAPE, false)
+    fun keepAccessibility(ctx: Context): Boolean = sp(ctx).getBoolean(KEY_KEEP_A11Y, false)
 
     /** Ordered list of package names the user assigned to pie slices. */
     fun pieApps(ctx: Context): List<String> =
