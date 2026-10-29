@@ -2,6 +2,8 @@ package com.kj2431.pielauncher.service
 
 import android.accessibilityservice.AccessibilityService
 import android.content.res.Configuration
+import android.os.Handler
+import android.os.Looper
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import com.kj2431.pielauncher.prefs.Prefs
@@ -22,6 +24,17 @@ class PieAccessibilityService : AccessibilityService() {
     private var overlay: PieOverlay? = null
     private var layoutKey = ""
     private val onSettingsChanged: () -> Unit = { refreshOverlay() }
+    private val main = Handler(Looper.getMainLooper())
+    private val relayout = Runnable {
+        overlay?.relayout()
+        scheduleHealthCheck()
+    }
+    private val healthCheck = object : Runnable {
+        override fun run() {
+            OverlayHealer.check(this@PieAccessibilityService)
+            main.postDelayed(this, HEALTH_CHECK_PERIOD_MS)
+        }
+    }
 
     override fun onServiceConnected() {
         instance = this
@@ -34,7 +47,10 @@ class PieAccessibilityService : AccessibilityService() {
         super.onConfigurationChanged(newConfig)
         if (PieOverlay.layoutKey(newConfig) != layoutKey) {
             layoutKey = PieOverlay.layoutKey(newConfig)
-            overlay?.relayout()
+            // Not right away: the camera flips the screen several times in a row, and windows
+            // added in the middle of a turn come out with that turn's rotation stuck on them.
+            main.removeCallbacks(relayout)
+            main.postDelayed(relayout, RELAYOUT_SETTLE_MS)
         }
     }
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
@@ -53,6 +69,8 @@ class PieAccessibilityService : AccessibilityService() {
      * selected; otherwise removes them. Must be called on the main thread.
      */
     fun refreshOverlay() {
+        main.removeCallbacks(healthCheck)
+        main.removeCallbacks(relayout)
         overlay?.removeEdges(); overlay = null
         if (instance !== this) return
         if (Prefs.serviceEnabled(this) &&
@@ -60,10 +78,19 @@ class PieAccessibilityService : AccessibilityService() {
         ) {
             overlay = PieOverlay(this, WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY)
                 .also { it.addEdges() }
+            scheduleHealthCheck()
         }
     }
 
+    /** Debounced: waits for the screen to stop turning before looking at the input windows. */
+    private fun scheduleHealthCheck() {
+        main.removeCallbacks(healthCheck)
+        main.postDelayed(healthCheck, HEALTH_CHECK_DELAY_MS)
+    }
+
     private fun tearDown() {
+        main.removeCallbacks(healthCheck)
+        main.removeCallbacks(relayout)
         OverlaySettings.unregister(onSettingsChanged)
         if (instance === this) instance = null
         overlay?.removeEdges(); overlay = null
@@ -73,5 +100,8 @@ class PieAccessibilityService : AccessibilityService() {
         @Volatile var instance: PieAccessibilityService? = null
             private set
         val isAvailable: Boolean get() = instance != null
+        private const val RELAYOUT_SETTLE_MS = 700L
+        private const val HEALTH_CHECK_DELAY_MS = 1000L
+        private const val HEALTH_CHECK_PERIOD_MS = 60_000L
     }
 }

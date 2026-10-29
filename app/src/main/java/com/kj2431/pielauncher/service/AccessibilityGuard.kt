@@ -28,8 +28,11 @@ object AccessibilityGuard {
 
     private const val TAG = "AccessibilityGuard"
     private const val DEBOUNCE_MS = 1000L
+    private const val RECONNECT_GAP_MS = 1500L
 
     private val main = Handler(Looper.getMainLooper())
+    /** Set while [reconnect] has the service off on purpose, so [ensure] doesn't race it. */
+    @Volatile private var reconnecting = false
     private var observer: ContentObserver? = null
 
     fun grantCommand(ctx: Context) =
@@ -71,12 +74,48 @@ object AccessibilityGuard {
     }
 
     /**
+     * Switches our service off and on again so the system issues a fresh window
+     * token for its overlay windows. Blocking; call off the main thread. Writes
+     * the setting directly when [canWrite], otherwise through root.
+     */
+    fun reconnect(ctx: Context): Boolean {
+        val app = ctx.applicationContext
+        val me = component(app)
+        val others = Settings.Secure.getString(app.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+            .orEmpty().split(':').filter { it.isNotBlank() && ComponentName.unflattenFromString(it) != me }
+        reconnecting = true
+        try {
+            if (!putServices(app, others, others.isNotEmpty())) return false
+            Thread.sleep(RECONNECT_GAP_MS)
+            return putServices(app, others + me.flattenToString(), true)
+        } finally {
+            reconnecting = false
+        }
+    }
+
+    private fun putServices(ctx: Context, list: List<String>, on: Boolean): Boolean {
+        val joined = list.joinToString(":")
+        if (canWrite(ctx)) return try {
+            val cr = ctx.contentResolver
+            Settings.Secure.putString(cr, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, joined)
+            Settings.Secure.putInt(cr, Settings.Secure.ACCESSIBILITY_ENABLED, if (on) 1 else 0)
+            true
+        } catch (e: SecurityException) {
+            Log.w(TAG, "could not write secure settings", e); false
+        }
+        return RootHelper.exec(
+            "settings put secure ${Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES} '$joined'",
+            "settings put secure ${Settings.Secure.ACCESSIBILITY_ENABLED} ${if (on) 1 else 0}"
+        )
+    }
+
+    /**
      * Re-enables the service if the user asked for that. Falls back to a root
      * grant only when root actions are on, so it never pops an unexpected su prompt.
      */
     fun ensure(ctx: Context) {
         val app = ctx.applicationContext
-        if (!Prefs.keepAccessibility(app) || isEnabled(app)) return
+        if (reconnecting || !Prefs.keepAccessibility(app) || isEnabled(app)) return
         record(app)
         if (canWrite(app)) { enable(app); return }
         if (Prefs.rootActionsEnabled(app)) thread(name = "a11y-guard") {
