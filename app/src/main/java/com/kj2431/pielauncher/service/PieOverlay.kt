@@ -62,7 +62,6 @@ class PieOverlay(private val ctx: Context, private val windowType: Int) {
 
         items = buildItems()
         watchPackages()
-        DiagLog.add(ctx, "layout ${screenW}x$screenH type=$windowType orient=${ctx.resources.configuration.orientation}")
 
         Prefs.edges(ctx).forEach { edge ->
             lateinit var view: PieEdgeView
@@ -122,12 +121,6 @@ class PieOverlay(private val ctx: Context, private val windowType: Int) {
             }
 
             runCatching { wm.addView(view, lp); views += view; stripParams[view] = lp }
-            // What the system actually gave the window: if this frame's shape or the
-            // rotation disagrees with the layout above, the window is being rotated.
-            view.post {
-                val pos = IntArray(2).also { view.getLocationOnScreen(it) }
-                DiagLog.add(ctx, "  $edge ${view.width}x${view.height} at ${pos[0]},${pos[1]} rot=${view.display?.rotation}")
-            }
         }
     }
 

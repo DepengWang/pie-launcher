@@ -3,13 +3,11 @@ package com.kj2431.pielauncher.service
 import android.content.Context
 import android.hardware.display.DisplayManager
 import android.os.PowerManager
+import android.util.Log
 import android.view.Display
 import android.view.Surface
 import com.kj2431.pielauncher.prefs.Prefs
 import com.kj2431.pielauncher.root.RootHelper
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import kotlin.concurrent.thread
 
 /**
@@ -31,6 +29,8 @@ import kotlin.concurrent.thread
  */
 object OverlayHealer {
 
+    private const val TAG = "OverlayHealer"
+
     /**
      * Each landscape camera shot can break the windows once, so repairs must be
      * allowed back to back; the cap only stops a loop if a reconnect never cures it.
@@ -43,20 +43,8 @@ object OverlayHealer {
         dumpsys input | grep -A1 -E 'name=[0-9a-f]+ com\.kj2431\.pielauncher, ' | grep -cE 'transform \(ROT_(90|180|270)\)'; true
     """.trimIndent()
 
-    /** Which rotations the dispatcher shows for our windows, and what was in front, for the log. */
-    private val DETAIL = """
-        dumpsys input | grep -A1 -E 'name=[0-9a-f]+ com\.kj2431\.pielauncher, ' | grep -oE 'ROT_[0-9]+' | sort -u | tr '\n' ' '
-        dumpsys window | grep mCurrentFocus | tail -n 1
-    """.trimIndent().lines().toTypedArray()
-
-    /** A healthy state is logged on the first check, after a bad one and then every [HEARTBEAT_CHECKS] checks. */
-    private const val HEARTBEAT_CHECKS = 30
-
     private val healTimes = ArrayDeque<Long>()
     private var running = false
-    private var lastOkAt: String? = null
-    private var wasBad = false
-    private var okChecks = 0
 
     /** Call after the edges were (re)added and the screen has settled. Main thread. */
     fun check(ctx: Context) {
@@ -71,28 +59,16 @@ object OverlayHealer {
         thread(name = "overlay-health") {
             try {
                 val bad = RootHelper.query(PROBE)?.trim()?.toIntOrNull() ?: return@thread
-                if (bad == 0) {
-                    if (lastOkAt == null || wasBad || okChecks % HEARTBEAT_CHECKS == 0) {
-                        DiagLog.add(app, "input transform ok")
-                    }
-                    okChecks++
-                    wasBad = false
-                    lastOkAt = SimpleDateFormat("MM-dd HH:mm:ss", Locale.US).format(Date())
-                    return@thread
-                }
-                val detail = RootHelper.query(*DETAIL)?.lines()?.joinToString(" | ") { it.trim() }.orEmpty()
-                DiagLog.add(app, "input transform rotated on $bad windows ($detail), last ok $lastOkAt")
-                wasBad = true
-                okChecks = 0
+                if (bad == 0) return@thread
+                Log.w(TAG, "input transform rotated on $bad windows")
                 val now = System.currentTimeMillis()
                 healTimes.removeAll { now - it > HEAL_WINDOW_MS }
                 if (healTimes.size >= MAX_HEALS_IN_WINDOW) {
-                    DiagLog.add(app, "skipping reconnect (${healTimes.size} in the last ${HEAL_WINDOW_MS / 1000}s)")
+                    Log.w(TAG, "skipping reconnect (${healTimes.size} in the last ${HEAL_WINDOW_MS / 1000}s)")
                     return@thread
                 }
                 healTimes += now
-                DiagLog.add(app, "reconnecting a11y")
-                DiagLog.add(app, "reconnect ${if (AccessibilityGuard.reconnect(app)) "done" else "failed"}")
+                Log.w(TAG, "reconnect ${if (AccessibilityGuard.reconnect(app)) "done" else "failed"}")
             } finally {
                 running = false
             }

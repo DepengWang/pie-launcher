@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
-import android.content.res.Configuration
 import android.database.ContentObserver
 import android.os.Handler
 import android.os.Looper
@@ -116,7 +115,6 @@ object AccessibilityGuard {
     fun ensure(ctx: Context) {
         val app = ctx.applicationContext
         if (reconnecting || !Prefs.keepAccessibility(app) || isEnabled(app)) return
-        record(app)
         if (canWrite(app)) { enable(app); return }
         if (Prefs.rootActionsEnabled(app)) thread(name = "a11y-guard") {
             if (grantViaRoot(app)) enable(app)
@@ -143,11 +141,6 @@ object AccessibilityGuard {
     fun unwatch(ctx: Context) {
         observer?.let { ctx.applicationContext.contentResolver.unregisterContentObserver(it) }
         observer = null
-    }
-
-    private fun record(ctx: Context) {
-        val land = ctx.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-        DiagLog.add(ctx, "a11y disabled by system, ${if (land) "landscape" else "portrait"}")
     }
 
     private fun component(ctx: Context) = ComponentName(ctx, PieAccessibilityService::class.java)
